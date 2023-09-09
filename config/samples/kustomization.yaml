@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- kubecluster.org_v1alpha1_cluster.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples
