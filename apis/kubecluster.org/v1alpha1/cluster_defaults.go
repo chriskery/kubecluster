@@ -19,12 +19,24 @@ import (
 )
 
 func addKubeClusterDefaultingFuncs(scheme *runtime.Scheme) error {
+	scheme.AddTypeDefaultingFunc(&KubeCluster{}, func(obj interface{}) { SetDefaults_KubeCluster(obj.(*KubeCluster)) })
+	scheme.AddTypeDefaultingFunc(&KubeClusterList{}, func(obj interface{}) { SetDefaults_KubeClusterList(obj.(*KubeClusterList)) })
 	return RegisterDefaults(scheme)
 }
 
-func SetDefaults_KubeCLuster(kcluster *KubeCluster) {
+func SetDefaults_KubeCluster(kcluster *KubeCluster) {
+	if (len(kcluster.Spec.MainContainer)) == 0 {
+		kcluster.Spec.MainContainer = ClusterDefaultContainerName
+	}
 	// Set default CleanKubeNodePolicy to None when neither fields specified.
 	if kcluster.Spec.RunPolicy.CleanKubeNodePolicy == nil {
-		kcluster.Spec.RunPolicy.CleanKubeNodePolicy = CleanPodPolicyPointer(CleanKubeNodePolicyAll)
+		kcluster.Spec.RunPolicy.CleanKubeNodePolicy = CleanKubeNodePolicyPointer(CleanKubeNodePolicyAll)
+	}
+}
+
+func SetDefaults_KubeClusterList(in *KubeClusterList) {
+	for i := range in.Items {
+		a := &in.Items[i]
+		SetDefaults_KubeCluster(a)
 	}
 }

@@ -2,7 +2,7 @@ package cluster_schema
 
 import (
 	"context"
-	kubeclusterorgv1alpha1 "github.com/kubecluster/api/v1alpha1"
+	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 )
 
 const SlurmClusterKind = "slurm"

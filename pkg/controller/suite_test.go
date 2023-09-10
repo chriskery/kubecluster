@@ -18,6 +18,7 @@ package controller
 
 import (
 	"fmt"
+	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -31,8 +32,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	kubeclusterorgv1alpha1 "github.com/kubecluster/api/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 

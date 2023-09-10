@@ -16,7 +16,7 @@ package util
 
 import (
 	"fmt"
-	kubeclusterorgv1alpha1 "github.com/kubecluster/api/v1alpha1"
+	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"github.com/kubecluster/pkg/controller/common"
 	"github.com/kubecluster/pkg/controller/expectation"
 	"reflect"

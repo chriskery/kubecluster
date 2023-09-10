@@ -31,8 +31,8 @@ const (
 	// ControllerNameLabel represents the label key for the operator name, e.g. tf-operator, mpi-operator, etc.
 	ControllerNameLabel = "kubeclusetr.org/controller-name"
 
-	// ClusterTypeLabel represents the label key for the job name, the value is the job name.
-	ClusterTypeLabel = "kubeclusetr.org/clusetr-type"
+	// ClusterNameLabel represents the label key for the cluster name, the value is the cluster name.
+	ClusterNameLabel = "kubeclusetr.org/clusetr-name"
 
 	ClusterDefaultContainerName = "kubenode"
 )
@@ -56,6 +56,10 @@ type ClusterSpec struct {
 	//ClusterType define the template of the cluster to be created
 	ClusterReplicaSpec map[ReplicaType]*ReplicaSpec `json:"ClusterReplicaSpec"`
 
+	// MainContainer specifies name of the main container which
+	// run as kubenode.
+	MainContainer string `json:"mainContainer,omitempty"`
+
 	// `RunPolicy` encapsulates various runtime policies of the distributed training
 	// job, for example how to clean up resources and how long the job can stay
 	// active.
@@ -76,17 +80,15 @@ type ClusterStatus struct {
 	// It is represented in RFC3339 form and is in UTC.
 	StartTime *metav1.Time `json:"startTime,omitempty"`
 
-	// Represents time when the KubeCluster was completed. It is not guaranteed to
-	// be set in happens-before order across separate operations.
-	// It is represented in RFC3339 form and is in UTC.
-	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
-
 	// Represents last time when the KubeCluster was reconciled. It is not guaranteed to
 	// be set in happens-before order across separate operations.
 	// It is represented in RFC3339 form and is in UTC.
 	LastReconcileTime *metav1.Time `json:"lastReconcileTime,omitempty"`
 }
 
+// +genclient
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+// +resource:path=kubecluster
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
@@ -99,15 +101,18 @@ type KubeCluster struct {
 	Status ClusterStatus `json:"status,omitempty"`
 }
 
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimzxachinery/pkg/runtime.Object
+// +resource:path=kubeclusters
 //+kubebuilder:object:root=true
 
-// ClusterList contains a list of KubeCluster
-type ClusterList struct {
+// KubeClusterList contains a list of KubeCluster
+type KubeClusterList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []KubeCluster `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&KubeCluster{}, &ClusterList{})
+	SchemeBuilder.Register(&KubeCluster{}, &KubeClusterList{})
+	SchemeBuilder.SchemeBuilder.Register(addKubeClusterDefaultingFuncs)
 }

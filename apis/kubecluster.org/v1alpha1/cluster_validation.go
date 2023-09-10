@@ -9,17 +9,24 @@ func ValidateV1alphaCluster(cluster *KubeCluster) error {
 	if errors := apimachineryvalidation.NameIsDNS1035Label(cluster.ObjectMeta.Name, false); errors != nil {
 		return fmt.Errorf("TFJob name is invalid: %v", errors)
 	}
-	if err := validateV1alphaClustereplicaSpecs(cluster.Spec.ClusterReplicaSpec); err != nil {
+	if err := validateV1alphaClusterSpecs(cluster.Spec); err != nil {
 		return err
 	}
 	return nil
 }
 
-func validateV1alphaClustereplicaSpecs(specs map[ReplicaType]*ReplicaSpec) error {
-	if specs == nil {
+func validateV1alphaClusterSpecs(spec ClusterSpec) error {
+	if len(spec.ClusterType) == 0 {
+		return fmt.Errorf("KubeCluster is not valid: cluster type expected")
+	}
+	if spec.ClusterReplicaSpec == nil {
 		return fmt.Errorf("KubeCluster is not valid")
 	}
-	for rType, value := range specs {
+	defaultContainerName := ClusterDefaultContainerName
+	if (len(spec.MainContainer)) != 0 {
+		defaultContainerName = spec.MainContainer
+	}
+	for rType, value := range spec.ClusterReplicaSpec {
 		if value == nil || len(value.Template.Containers) == 0 {
 			return fmt.Errorf("KubeCluster is not valid: containers definition expected in %v", rType)
 		}
@@ -30,7 +37,7 @@ func validateV1alphaClustereplicaSpecs(specs map[ReplicaType]*ReplicaSpec) error
 				msg := fmt.Sprintf("KubeCluster is not valid: Image is undefined in the container of %v", rType)
 				return fmt.Errorf(msg)
 			}
-			if container.Name == ClusterDefaultContainerName {
+			if container.Name == defaultContainerName {
 				numNamedkubenode++
 			}
 		}

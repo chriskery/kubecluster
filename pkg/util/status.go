@@ -2,8 +2,7 @@ package util
 
 import (
 	"fmt"
-	kubeclusterorgv1alpha1 "github.com/kubecluster/api/v1alpha1"
-
+	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -29,23 +28,28 @@ func NewReason(kind, reason string) string {
 	return fmt.Sprintf("%s%s", kind, reason)
 }
 
+// IsFinished checks if the job is succeeded or failed
+func IsFinished(status v1alpha1.ClusterStatus) bool {
+	return IsFailed(status)
+}
+
 // IsFailed checks if the KubeCluster is failed
-func IsFailed(status kubeclusterorgv1alpha1.ClusterStatus) bool {
-	return isStatusConditionTrue(status, kubeclusterorgv1alpha1.ClusterFailed)
+func IsFailed(status v1alpha1.ClusterStatus) bool {
+	return isStatusConditionTrue(status, v1alpha1.ClusterFailed)
 }
 
-func IsRunning(status kubeclusterorgv1alpha1.ClusterStatus) bool {
-	return isStatusConditionTrue(status, kubeclusterorgv1alpha1.ClusterRunning)
+func IsRunning(status v1alpha1.ClusterStatus) bool {
+	return isStatusConditionTrue(status, v1alpha1.ClusterRunning)
 }
 
-func IsSuspended(status kubeclusterorgv1alpha1.ClusterStatus) bool {
-	return isStatusConditionTrue(status, kubeclusterorgv1alpha1.ClusterSuspended)
+func IsSuspended(status v1alpha1.ClusterStatus) bool {
+	return isStatusConditionTrue(status, v1alpha1.ClusterSuspended)
 }
 
 // UpdateClusterConditions adds to the ClusterStatus a new condition if needed, with the conditionType, reason, and message
 func UpdateClusterConditions(
-	ClusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
-	conditionType kubeclusterorgv1alpha1.ClusterConditionType,
+	ClusterStatus *v1alpha1.ClusterStatus,
+	conditionType v1alpha1.ClusterConditionType,
 	conditionStatus v1.ConditionStatus,
 	reason, message string,
 ) {
@@ -53,7 +57,7 @@ func UpdateClusterConditions(
 	setCondition(ClusterStatus, condition)
 }
 
-func isStatusConditionTrue(status kubeclusterorgv1alpha1.ClusterStatus, condType kubeclusterorgv1alpha1.ClusterConditionType) bool {
+func isStatusConditionTrue(status v1alpha1.ClusterStatus, condType v1alpha1.ClusterConditionType) bool {
 	for _, condition := range status.Conditions {
 		if condition.Type == condType && condition.Status == v1.ConditionTrue {
 			return true
@@ -63,8 +67,8 @@ func isStatusConditionTrue(status kubeclusterorgv1alpha1.ClusterStatus, condType
 }
 
 // newCondition creates a new KubeCluster condition.
-func newCondition(conditionType kubeclusterorgv1alpha1.ClusterConditionType, conditionStatus v1.ConditionStatus, reason, message string) kubeclusterorgv1alpha1.ClusterCondition {
-	return kubeclusterorgv1alpha1.ClusterCondition{
+func newCondition(conditionType v1alpha1.ClusterConditionType, conditionStatus v1.ConditionStatus, reason, message string) v1alpha1.ClusterCondition {
+	return v1alpha1.ClusterCondition{
 		Type:               conditionType,
 		Status:             conditionStatus,
 		LastUpdateTime:     metav1.Now(),
@@ -75,7 +79,7 @@ func newCondition(conditionType kubeclusterorgv1alpha1.ClusterConditionType, con
 }
 
 // getCondition returns the condition with the provided type.
-func getCondition(status kubeclusterorgv1alpha1.ClusterStatus, condType kubeclusterorgv1alpha1.ClusterConditionType) *kubeclusterorgv1alpha1.ClusterCondition {
+func getCondition(status v1alpha1.ClusterStatus, condType v1alpha1.ClusterConditionType) *v1alpha1.ClusterCondition {
 	for _, condition := range status.Conditions {
 		if condition.Type == condType {
 			return &condition
@@ -87,7 +91,7 @@ func getCondition(status kubeclusterorgv1alpha1.ClusterStatus, condType kubeclus
 // setCondition updates the KubeCluster to include the provided condition.
 // If the condition that we are about to add already exists
 // and has the same status and reason then we are not going to update.
-func setCondition(status *kubeclusterorgv1alpha1.ClusterStatus, condition kubeclusterorgv1alpha1.ClusterCondition) {
+func setCondition(status *v1alpha1.ClusterStatus, condition v1alpha1.ClusterCondition) {
 	// Do nothing if ClusterStatus have failed condition
 	if IsFailed(*status) {
 		return
@@ -111,13 +115,13 @@ func setCondition(status *kubeclusterorgv1alpha1.ClusterStatus, condition kubecl
 }
 
 // filterOutCondition returns a new slice of KubeCluster conditions without conditions with the provided type.
-func filterOutCondition(conditions []kubeclusterorgv1alpha1.ClusterCondition, condType kubeclusterorgv1alpha1.ClusterConditionType) []kubeclusterorgv1alpha1.ClusterCondition {
-	var newConditions []kubeclusterorgv1alpha1.ClusterCondition
+func filterOutCondition(conditions []v1alpha1.ClusterCondition, condType v1alpha1.ClusterConditionType) []v1alpha1.ClusterCondition {
+	var newConditions []v1alpha1.ClusterCondition
 	for _, c := range conditions {
-		if condType == kubeclusterorgv1alpha1.ClusterRestarting && c.Type == kubeclusterorgv1alpha1.ClusterRunning {
+		if condType == v1alpha1.ClusterRestarting && c.Type == v1alpha1.ClusterRunning {
 			continue
 		}
-		if condType == kubeclusterorgv1alpha1.ClusterRunning && c.Type == kubeclusterorgv1alpha1.ClusterRestarting {
+		if condType == v1alpha1.ClusterRunning && c.Type == v1alpha1.ClusterRestarting {
 			continue
 		}
 
@@ -126,7 +130,7 @@ func filterOutCondition(conditions []kubeclusterorgv1alpha1.ClusterCondition, co
 		}
 
 		// Set the running condition status to be false when current condition failed or succeeded
-		if condType == kubeclusterorgv1alpha1.ClusterFailed && c.Type == kubeclusterorgv1alpha1.ClusterRunning {
+		if condType == v1alpha1.ClusterFailed && c.Type == v1alpha1.ClusterRunning {
 			c.Status = v1.ConditionFalse
 		}
 

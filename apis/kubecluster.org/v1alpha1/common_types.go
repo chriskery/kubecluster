@@ -22,10 +22,13 @@ import (
 
 const (
 	// ReplicaIndexLabel represents the label key for the replica-index, e.g. 0, 1, 2.. etc
-	ReplicaIndexLabel = "training.kubeflow.org/replica-index"
+	ReplicaIndexLabel = "kubeclusetr.org/replica-index"
 
 	// ReplicaTypeLabel represents the label key for the replica-type, e.g. ps, worker etc.
 	ReplicaTypeLabel = "kubeclusetr.org/replica-type"
+
+	// ClusterRoleLabel represents the label key for the clusetr role, e.g. master.
+	ClusterRoleLabel = "kubeclusetr.org/clusetr-role"
 )
 
 // ReplicaType represents the type of the replica. Each operator needs to define its
@@ -33,12 +36,24 @@ const (
 type ReplicaType string
 
 // ReplicaStatus represents the current observed state of the replica.
-type ReplicaStatus string
+type ReplicaStatus struct {
+	// The number of actively running pods.
+	Active int32 `json:"active,omitempty"`
+
+	// The number of pods which reached phase Succeeded.
+	Creating int32 `json:"creating,omitempty"`
+
+	// The number of pods which reached phase Succeeded.
+	Failed int32 `json:"failed,omitempty"`
+
+	// A Selector is a label query over a set of resources. The result of matchLabels and
+	// matchExpressions are ANDed. An empty Selector matches all objects. A null
+	// Selector matches no objects.
+	Selector string `json:"selector,omitempty"`
+}
 
 // KubeNode We use pod as the replica, so the replica spec is the pod spec
-type KubeNode struct {
-	v1.PodSpec
-}
+type KubeNode v1.PodSpec
 
 // ReplicaTemplate describes the data a replica(or a node) should have when created from a template
 type ReplicaTemplate KubeNode
@@ -53,6 +68,11 @@ type ReplicaSpec struct {
 	// will be created for this replica. RestartPolicy in PodTemplateSpec
 	// will be overide by RestartPolicy in ReplicaSpec
 	Template ReplicaTemplate `json:"template"`
+
+	// Restart policy for all replicas within the job.
+	// One of Always, OnFailure, Never and ExitCode.
+	// Default to Never.
+	RestartPolicy RestartPolicy `json:"restartPolicy,omitempty"`
 }
 
 // ClusterCondition describes the state of the KubeCluster at a certain point.
@@ -136,12 +156,6 @@ type RunPolicy struct {
 	// CleanKubeNodePolicy defines the policy to kill pods after the KubeCluster completes.
 	// Default to None.
 	CleanKubeNodePolicy *CleanKubeNodePolicy `json:"CleanKubeNodePolicy,omitempty"`
-
-	// TTLSecondsAfterFinished is the TTL to clean up Clusters.
-	// It may take extra ReconcilePeriod seconds for the cleanup, since
-	// reconcile gets called periodically.
-	// Default to infinite.
-	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
 
 	// Specifies the duration in seconds relative to the startTime that the KubeCluster may be active
 	// before the system tries to terminate it; value must be positive integer.

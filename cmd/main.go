@@ -20,6 +20,8 @@ import (
 	"context"
 	"errors"
 	"flag"
+	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/kubecluster/pkg/controller/cluster_schema"
 	"github.com/kubecluster/pkg/controller/common"
 	"os"
 	"strings"
@@ -37,7 +39,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	kubeclusterorgv1alpha1 "github.com/kubecluster/api/v1alpha1"
 	"github.com/kubecluster/pkg/controller"
 	//+kubebuilder:scaffold:imports
 )
@@ -58,7 +59,7 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var enabledSchemes controller.EnabledSchemes
+	var enabledSchemes cluster_schema.EnabledSchemes
 	var controllerThreads int
 	var gangSchedulerName string
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metrics endpoint binds to.")
@@ -123,7 +124,7 @@ func main() {
 	}
 }
 
-func setupController(mgr ctrl.Manager, enabledSchemes controller.EnabledSchemes, gangSchedulerName string, controllerThreads int) {
+func setupController(mgr ctrl.Manager, enabledSchemes cluster_schema.EnabledSchemes, gangSchedulerName string, controllerThreads int) {
 	// Prepare GangSchedulingSetupFunc
 	gangSchedulingSetupFunc := common.GenNonGangSchedulerSetupFunc()
 	if strings.EqualFold(gangSchedulerName, string(common.GangSchedulerVolcano)) {
@@ -143,7 +144,7 @@ func setupController(mgr ctrl.Manager, enabledSchemes controller.EnabledSchemes,
 	}
 	errMsg := "failed to set up controller"
 	for _, s := range enabledSchemes {
-		schemaFactory, supported := controller.SupportedClusterSchemaReconciler[s]
+		schemaFactory, supported := cluster_schema.SupportedClusterSchemaReconciler[s]
 		if !supported {
 			setupLog.Error(errors.New(errMsg), "cluster scheme is not supported", "scheme", s)
 			os.Exit(1)

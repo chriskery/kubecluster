@@ -16,9 +16,9 @@ package util
 
 import (
 	"fmt"
-	kubeclusterorgv1alpha1 "github.com/kubecluster/api/v1alpha1"
+	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"github.com/kubecluster/pkg/controller/common"
-	expectation2 "github.com/kubecluster/pkg/controller/expectation"
+	"github.com/kubecluster/pkg/controller/expectation"
 	"github.com/kubecluster/pkg/util"
 	"reflect"
 
@@ -30,14 +30,14 @@ import (
 // SatisfiedExpectations returns true if the required adds/dels for the given mxjob have been observed.
 // Add/del counts are established by the controller at sync time, and updated as controllees are observed by the controller
 // manager.
-func SatisfiedExpectations(exp expectation2.ControllerExpectationsInterface, jobKey string, replicaTypes []kubeclusterorgv1alpha1.ReplicaType) bool {
+func SatisfiedExpectations(exp expectation.ControllerExpectationsInterface, jobKey string, replicaTypes []kubeclusterorgv1alpha1.ReplicaType) bool {
 	satisfied := false
 	for _, rtype := range replicaTypes {
 		// Check the expectations of the pods.
-		expectationPodsKey := expectation2.GenExpectationPodsKey(jobKey, string(rtype))
+		expectationPodsKey := expectation.GenExpectationPodsKey(jobKey, string(rtype))
 		satisfied = satisfied || exp.SatisfiedExpectations(expectationPodsKey)
 		// Check the expectations of the services.
-		expectationServicesKey := expectation2.GenExpectationServicesKey(jobKey, string(rtype))
+		expectationServicesKey := expectation.GenExpectationServicesKey(jobKey, string(rtype))
 		satisfied = satisfied || exp.SatisfiedExpectations(expectationServicesKey)
 	}
 
@@ -45,7 +45,7 @@ func SatisfiedExpectations(exp expectation2.ControllerExpectationsInterface, job
 }
 
 // OnDependentCreateFunc modify expectations when dependent (pod/service) creation observed.
-func OnDependentCreateFunc(exp expectation2.ControllerExpectationsInterface) func(event.CreateEvent) bool {
+func OnDependentCreateFunc(exp expectation.ControllerExpectationsInterface) func(event.CreateEvent) bool {
 	return func(e event.CreateEvent) bool {
 		rtype := e.Object.GetLabels()[kubeclusterorgv1alpha1.ReplicaTypeLabel]
 		if len(rtype) == 0 {
@@ -58,9 +58,9 @@ func OnDependentCreateFunc(exp expectation2.ControllerExpectationsInterface) fun
 			var expectKey string
 			switch e.Object.(type) {
 			case *corev1.Pod:
-				expectKey = expectation2.GenExpectationPodsKey(jobKey, rtype)
+				expectKey = expectation.GenExpectationPodsKey(jobKey, rtype)
 			case *corev1.Service:
-				expectKey = expectation2.GenExpectationServicesKey(jobKey, rtype)
+				expectKey = expectation.GenExpectationServicesKey(jobKey, rtype)
 			default:
 				return false
 			}
@@ -142,7 +142,7 @@ func resolveControllerRef(cc *common.ClusterController, namespace string, contro
 }
 
 // OnDependentDeleteFunc modify expectations when dependent (pod/service) deletion observed.
-func OnDependentDeleteFunc(exp expectation2.ControllerExpectationsInterface) func(event.DeleteEvent) bool {
+func OnDependentDeleteFunc(exp expectation.ControllerExpectationsInterface) func(event.DeleteEvent) bool {
 	return func(e event.DeleteEvent) bool {
 
 		rtype := e.Object.GetLabels()[kubeclusterorgv1alpha1.ReplicaTypeLabel]
@@ -156,9 +156,9 @@ func OnDependentDeleteFunc(exp expectation2.ControllerExpectationsInterface) fun
 			var expectKey string
 			switch e.Object.(type) {
 			case *corev1.Pod:
-				expectKey = expectation2.GenExpectationPodsKey(jobKey, rtype)
+				expectKey = expectation.GenExpectationPodsKey(jobKey, rtype)
 			case *corev1.Service:
-				expectKey = expectation2.GenExpectationServicesKey(jobKey, rtype)
+				expectKey = expectation.GenExpectationServicesKey(jobKey, rtype)
 			default:
 				return false
 			}
