@@ -21,6 +21,9 @@ import (
 )
 
 const (
+	// ClusterTypeLabel represents the label key for the clusetr type
+	ClusterTypeLabel = "kubeclusetr.org/clusetr-type"
+
 	// ReplicaIndexLabel represents the label key for the replica-index, e.g. 0, 1, 2.. etc
 	ReplicaIndexLabel = "kubeclusetr.org/replica-index"
 
@@ -53,7 +56,7 @@ type ReplicaStatus struct {
 }
 
 // KubeNode We use pod as the replica, so the replica spec is the pod spec
-type KubeNode v1.PodSpec
+type KubeNode v1.PodTemplateSpec
 
 // ReplicaTemplate describes the data a replica(or a node) should have when created from a template
 type ReplicaTemplate KubeNode

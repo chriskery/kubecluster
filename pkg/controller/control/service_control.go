@@ -212,11 +212,11 @@ func (f *FakeServiceControl) Clear() {
 // created as an interface to allow testing.
 type ConfigMapControlInterface interface {
 	// CreateConfigMaps creates new Services according to the spec.
-	CreateConfigMaps(namespace string, service *v1.Service, object runtime.Object) error
+	CreateConfigMaps(namespace string, configmap *v1.ConfigMap, object runtime.Object) error
 	// CreateConfigMapsWithControllerRef creates new services according to the spec, and sets object as the service's controller.
-	CreateConfigMapsWithControllerRef(namespace string, service *v1.Service, object runtime.Object, controllerRef *metav1.OwnerReference) error
+	CreateConfigMapsWithControllerRef(namespace string, configmap *v1.ConfigMap, object runtime.Object, controllerRef *metav1.OwnerReference) error
 	// PatchConfigMap patches the service.
 	PatchConfigMap(namespace, name string, data []byte) error
 	// DeleteConfigMap deletes the service identified by serviceID.
-	DeleteConfigMap(namespace, serviceID string, object runtime.Object) error
+	DeleteConfigMap(namespace, configMapID string, object runtime.Object) error
 }

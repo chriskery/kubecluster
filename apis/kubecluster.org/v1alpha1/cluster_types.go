@@ -37,9 +37,6 @@ const (
 	ClusterDefaultContainerName = "kubenode"
 )
 
-type ClusterTemplate struct {
-}
-
 type ClusterType string
 
 // ClusterSpec defines the desired state of KubeCluster

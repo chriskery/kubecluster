@@ -17,8 +17,9 @@ package util
 import (
 	"fmt"
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	common2 "github.com/kubecluster/pkg/common"
+	"github.com/kubecluster/pkg/controller/cluster_schema"
 	"github.com/kubecluster/pkg/controller/common"
-	"github.com/kubecluster/pkg/controller/expectation"
 	"reflect"
 	"strings"
 
@@ -51,8 +52,17 @@ func LoggerForGenericKind(obj metav1.Object, kind string) *log.Entry {
 }
 
 // OnDependentCreateFuncGeneric modify expectations when dependent (pod/service) creation observed.
-func OnDependentCreateFuncGeneric(exp expectation.ControllerExpectationsInterface) func(event.CreateEvent) bool {
+func OnDependentCreateFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSchema]common2.ClusterSchemaReconciler) func(event.CreateEvent) bool {
 	return func(e event.CreateEvent) bool {
+		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
+		if len(clusterType) == 0 {
+			return false
+		}
+		exp, ok := schemaReconcilers[cluster_schema.ClusterSchema(clusterType)]
+		if !ok {
+			return false
+		}
+
 		rtype := e.Object.GetLabels()[kubeclusterorgv1alpha1.ReplicaTypeLabel]
 		if len(rtype) == 0 {
 			return false
@@ -111,8 +121,16 @@ func OnDependentUpdateFuncGeneric(jc *common.ClusterController) func(updateEvent
 }
 
 // OnDependentDeleteFuncGeneric modify expectations when dependent (pod/service) deletion observed.
-func OnDependentDeleteFuncGeneric(exp expectation.ControllerExpectationsInterface) func(event.DeleteEvent) bool {
+func OnDependentDeleteFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSchema]common2.ClusterSchemaReconciler) func(event.DeleteEvent) bool {
 	return func(e event.DeleteEvent) bool {
+		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
+		if len(clusterType) == 0 {
+			return false
+		}
+		exp, ok := schemaReconcilers[cluster_schema.ClusterSchema(clusterType)]
+		if !ok {
+			return false
+		}
 
 		rtype := e.Object.GetLabels()[kubeclusterorgv1alpha1.ReplicaTypeLabel]
 		if len(rtype) == 0 {

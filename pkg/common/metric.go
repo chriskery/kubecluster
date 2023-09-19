@@ -23,37 +23,30 @@ import (
 
 // Define all the prometheus counters for all clusters
 var (
-	clusterCreatedCount = promauto.NewCounterVec(
+	clustersCreatedCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "kubeclusters_created_total",
+			Name: "training_operator_clusters_created_total",
 			Help: "Counts number of clusters created",
 		},
 		[]string{"cluster_namespace", "cluster_type"},
 	)
 	clustersDeletedCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "kubeclusters_deleted_total",
+			Name: "training_operator_clusters_deleted_total",
 			Help: "Counts number of clusters deleted",
-		},
-		[]string{"cluster_namespace", "cluster_type"},
-	)
-	clustersSuccessfulCount = promauto.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "kubeclusters_successful_total",
-			Help: "Counts number of clusters successful",
 		},
 		[]string{"cluster_namespace", "cluster_type"},
 	)
 	clustersFailedCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "kubeclusters_failed_total",
+			Name: "training_operator_clusters_failed_total",
 			Help: "Counts number of clusters failed",
 		},
-		[]string{"cluster_namespace", "cluster_schema"},
+		[]string{"cluster_namespace", "cluster_type"},
 	)
 	clustersRestartedCount = promauto.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "kubeclusters_restarted_total",
+			Name: "training_operator_clusters_restarted_total",
 			Help: "Counts number of clusters restarted",
 		},
 		[]string{"cluster_namespace", "cluster_type"},
@@ -62,30 +55,24 @@ var (
 
 func init() {
 	// Register custom metrics with the global prometheus registry
-	metrics.Registry.MustRegister(
-		clusterCreatedCount,
+	metrics.Registry.MustRegister(clustersCreatedCount,
 		clustersDeletedCount,
-		clustersSuccessfulCount,
 		clustersFailedCount,
 		clustersRestartedCount)
 }
 
-func CreatedclustersCounterInc(cluster_namespace, cluster_type string) {
-	clustersRestartedCount.WithLabelValues(cluster_namespace, cluster_type).Inc()
+func CreatedClustersCounterInc(clusterNamespace, clusterType string) {
+	clustersCreatedCount.WithLabelValues(clusterNamespace, clusterType).Inc()
 }
 
-func DeletedclustersCounterInc(cluster_namespace string, cluster_type kubeclusterorgv1alpha1.ClusterType) {
-	clustersDeletedCount.WithLabelValues(cluster_namespace, string(cluster_type)).Inc()
+func DeletedClustersCounterInc(clusterNamespace, clusterType string) {
+	clustersDeletedCount.WithLabelValues(clusterNamespace, clusterType).Inc()
 }
 
-func SuccessfulclustersCounterInc(cluster_namespace, cluster_type string) {
-	clustersSuccessfulCount.WithLabelValues(cluster_namespace, cluster_type).Inc()
+func FailedClustersCounterInc(clusterNamespace, clusterType string) {
+	clustersFailedCount.WithLabelValues(clusterNamespace, clusterType).Inc()
 }
 
-func FailedclustersCounterInc(cluster_namespace, cluster_type string) {
-	clustersFailedCount.WithLabelValues(cluster_namespace, cluster_type).Inc()
-}
-
-func RestartedclustersCounterInc(cluster_namespace, cluster_type string) {
-	clustersRestartedCount.WithLabelValues(cluster_namespace, cluster_type).Inc()
+func RestartedClustersCounterInc(clusterNamespace string, clusterType kubeclusterorgv1alpha1.ClusterType) {
+	clustersRestartedCount.WithLabelValues(clusterNamespace, string(clusterType)).Inc()
 }

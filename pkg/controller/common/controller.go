@@ -113,7 +113,7 @@ type ClusterController struct {
 	//TO avoid concurrent read write error
 	SchemaReconcilerMutux sync.Mutex
 
-	SchemaReconcilerManager map[cluster_schema.ClusterSchema]cluster_schema.ClusterSchemaReconciler
+	SchemaReconcilerManager map[cluster_schema.ClusterSchema]common.ClusterSchemaReconciler
 
 	// PodControl is used to add or delete pods.
 	PodControl control.PodControlInterface
@@ -147,24 +147,6 @@ type ClusterController struct {
 
 	// PriorityClassInformerSynced returns true if the priority class store has been synced at least once.
 	PriorityClassInformerSynced cache.InformerSynced
-
-	// A TTLCache of pod/services creates/deletes each KubeCluster expects to see
-	// We use KubeCluster namespace/name + ReplicaType + pods/services as an expectation key,
-	// For example, there is a TFCluster with namespace "tf-operator" and name "tfCluster-abc":
-	// {
-	//     "PS": {
-	//         "Replicas": 2,
-	//     },
-	//     "Worker": {
-	//         "Replicas": 4,
-	//     }
-	// }
-	// We will create 4 expectations:
-	// - "tf-operator/tfCluster-abc/ps/services", expects 2 adds.
-	// - "tf-operator/tfCluster-abc/ps/pods", expects 2 adds.
-	// - "tf-operator/tfCluster-abc/worker/services", expects 4 adds.
-	// - "tf-operator/tfCluster-abc/worker/pods", expects 4 adds.
-	Expectations expectation.ControllerExpectationsInterface
 
 	// WorkQueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -223,6 +205,11 @@ func (cc *ClusterController) GenLabels(clusterType string) map[string]string {
 	}
 }
 
+// GetPortsFromClusterSpec gets the ports of job container. Port could be nil, if distributed communication strategy doesn't need and no other ports that need to be exposed.
+func (cc *ClusterController) GetPortsFromClusterSpec(spec *v1alpha1.ReplicaSpec, containerName string) (map[string]int32, error) {
+	return core.GetPortsFromJob(spec, containerName)
+}
+
 // resolveControllerRef returns the KubeCluster referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching KubeCluster
 // of the correct Kind.
@@ -244,7 +231,7 @@ func (cc *ClusterController) resolveControllerRef(namespace string, controllerRe
 	return Cluster
 }
 
-func (cc *ClusterController) RegisterSchema(schema cluster_schema.ClusterSchema, reconciler cluster_schema.ClusterSchemaReconciler) error {
+func (cc *ClusterController) RegisterSchema(schema cluster_schema.ClusterSchema, reconciler common.ClusterSchemaReconciler) error {
 	cc.SchemaReconcilerMutux.Lock()
 	defer cc.SchemaReconcilerMutux.Unlock()
 
@@ -256,7 +243,7 @@ func (cc *ClusterController) RegisterSchema(schema cluster_schema.ClusterSchema,
 	return nil
 }
 
-func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster) error {
+func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster, schemaReconciler common.ClusterSchemaReconciler) error {
 	metaObject := kcluster.GetObjectMeta()
 	runtimeObject := runtime.Object(kcluster)
 	runPolicy := &kcluster.Spec.RunPolicy
@@ -270,7 +257,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 	//    and it's safe to reset the expectations
 	// 2. Reset expectations can avoid dirty data such as `expectedDeletion = -1`
 	//    (pod or service was deleted unexpectedly)
-	if err = cc.ResetExpectations(clusterKey, kcluster.Spec.ClusterReplicaSpec); err != nil {
+	if err = cc.ResetExpectations(clusterKey, kcluster.Spec.ClusterReplicaSpec, schemaReconciler); err != nil {
 		log.Warnf("Failed to reset expectations: %v", err)
 	}
 
@@ -283,7 +270,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 
 	services, err := cc.Controller.GetServicesForCluster(kcluster)
 	if err != nil {
-		log.Warnf("GetServicesForCluster error %v", err)
+		log.Warnf("GetServicesForJob error %v", err)
 		return err
 	}
 
@@ -395,107 +382,113 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 		util.UpdateClusterConditions(&kcluster.Status, v1alpha1.ClusterFailed, corev1.ConditionTrue, util.NewReason(clusterKind, util.ClusterFailedReason), failureMessage)
 
 		return cc.Controller.UpdateClusterStatusInApiServer(metaObject, &kcluster.Status)
-	} else {
-		// General cases which need to reconcile
-		if cc.Config.EnableGangScheduling() {
-			minMember := totalReplicas
-			queue := ""
-			priorityClass := ""
-			var schedulerTimeout *int32
-			var minResources *corev1.ResourceList
+	}
 
-			if runPolicy.SchedulingPolicy != nil {
-				if minAvailable := runPolicy.SchedulingPolicy.MinAvailable; minAvailable != nil {
-					minMember = *minAvailable
-				}
-				if q := runPolicy.SchedulingPolicy.Queue; len(q) != 0 {
-					queue = q
-				}
-				if pc := runPolicy.SchedulingPolicy.PriorityClass; len(pc) != 0 {
-					priorityClass = pc
-				}
-				if mr := runPolicy.SchedulingPolicy.MinResources; mr != nil {
-					minResources = (*corev1.ResourceList)(mr)
-				}
-				if timeout := runPolicy.SchedulingPolicy.ScheduleTimeoutSeconds; timeout != nil {
-					schedulerTimeout = timeout
-				}
+	// General cases which need to reconcile
+	if cc.Config.EnableGangScheduling() {
+		minMember := totalReplicas
+		queue := ""
+		priorityClass := ""
+		var schedulerTimeout *int32
+		var minResources *corev1.ResourceList
+
+		if runPolicy.SchedulingPolicy != nil {
+			if minAvailable := runPolicy.SchedulingPolicy.MinAvailable; minAvailable != nil {
+				minMember = *minAvailable
 			}
-
-			if minResources == nil {
-				minResources = cc.calcPGMinResources(minMember, kcluster.Spec.ClusterReplicaSpec)
+			if q := runPolicy.SchedulingPolicy.Queue; len(q) != 0 {
+				queue = q
 			}
-
-			var pgSpecFill FillPodGroupSpecFunc
-			switch cc.Config.GangScheduling {
-			case GangSchedulerVolcano:
-				pgSpecFill = func(pg metav1.Object) error {
-					volcanoPodGroup, match := pg.(*volcanov1beta1.PodGroup)
-					if !match {
-						return fmt.Errorf("unable to recognize PodGroup: %v", klog.KObj(pg))
-					}
-					volcanoPodGroup.Spec = volcanov1beta1.PodGroupSpec{
-						MinMember:         minMember,
-						Queue:             queue,
-						PriorityClassName: priorityClass,
-						MinResources:      minResources,
-					}
-					return nil
-				}
-			default:
-				pgSpecFill = func(pg metav1.Object) error {
-					schedulerPluginsPodGroup, match := pg.(*schedulerpluginsv1alpha1.PodGroup)
-					if !match {
-						return fmt.Errorf("unable to recognize PodGroup: %v", klog.KObj(pg))
-					}
-					schedulerPluginsPodGroup.Spec = schedulerpluginsv1alpha1.PodGroupSpec{
-						MinMember:              minMember,
-						MinResources:           *minResources,
-						ScheduleTimeoutSeconds: schedulerTimeout,
-					}
-					return nil
-				}
+			if pc := runPolicy.SchedulingPolicy.PriorityClass; len(pc) != 0 {
+				priorityClass = pc
 			}
-
-			syncReplicas := true
-			pg, err := cc.SyncPodGroup(metaObject, pgSpecFill)
-			if err != nil {
-				log.Warnf("Sync PodGroup %v: %v", clusterKey, err)
-				syncReplicas = false
+			if mr := runPolicy.SchedulingPolicy.MinResources; mr != nil {
+				minResources = (*corev1.ResourceList)(mr)
 			}
-
-			// Delay pods creation until PodGroup status is Inqueue
-			if cc.PodGroupControl.DelayPodCreationDueToPodGroup(pg) {
-				log.Warnf("PodGroup %v unschedulable", clusterKey)
-				syncReplicas = false
-			}
-
-			if !syncReplicas {
-				now := metav1.Now()
-				kcluster.Status.LastReconcileTime = &now
-
-				// Update job status here to trigger a new reconciliation
-				return cc.Controller.UpdateClusterStatusInApiServer(metaObject, &kcluster.Status)
+			if timeout := runPolicy.SchedulingPolicy.ScheduleTimeoutSeconds; timeout != nil {
+				schedulerTimeout = timeout
 			}
 		}
 
-		// Diff current active pods/services with replicas.
-		for rtype, spec := range kcluster.Spec.ClusterReplicaSpec {
-			err := cc.Controller.ReconcilePods(metaObject, &kcluster.Status, pods, rtype, spec)
-			if err != nil {
-				log.Warnf("ReconcilePods error %v", err)
-				return err
-			}
+		if minResources == nil {
+			minResources = cc.calcPGMinResources(minMember, kcluster.Spec.ClusterReplicaSpec)
+		}
 
-			err = cc.Controller.ReconcileServices(metaObject, &kcluster.Status, services, rtype, spec)
-			if err != nil {
-				log.Warnf("ReconcileServices error %v", err)
-				return err
+		var pgSpecFill FillPodGroupSpecFunc
+		switch cc.Config.GangScheduling {
+		case GangSchedulerVolcano:
+			pgSpecFill = func(pg metav1.Object) error {
+				volcanoPodGroup, match := pg.(*volcanov1beta1.PodGroup)
+				if !match {
+					return fmt.Errorf("unable to recognize PodGroup: %v", klog.KObj(pg))
+				}
+				volcanoPodGroup.Spec = volcanov1beta1.PodGroupSpec{
+					MinMember:         minMember,
+					Queue:             queue,
+					PriorityClassName: priorityClass,
+					MinResources:      minResources,
+				}
+				return nil
 			}
+		default:
+			pgSpecFill = func(pg metav1.Object) error {
+				schedulerPluginsPodGroup, match := pg.(*schedulerpluginsv1alpha1.PodGroup)
+				if !match {
+					return fmt.Errorf("unable to recognize PodGroup: %v", klog.KObj(pg))
+				}
+				schedulerPluginsPodGroup.Spec = schedulerpluginsv1alpha1.PodGroupSpec{
+					MinMember:              minMember,
+					MinResources:           *minResources,
+					ScheduleTimeoutSeconds: schedulerTimeout,
+				}
+				return nil
+			}
+		}
+
+		syncReplicas := true
+		pg, err := cc.SyncPodGroup(metaObject, pgSpecFill)
+		if err != nil {
+			log.Warnf("Sync PodGroup %v: %v", clusterKey, err)
+			syncReplicas = false
+		}
+
+		// Delay pods creation until PodGroup status is Inqueue
+		if cc.PodGroupControl.DelayPodCreationDueToPodGroup(pg) {
+			log.Warnf("PodGroup %v unschedulable", clusterKey)
+			syncReplicas = false
+		}
+
+		if !syncReplicas {
+			now := metav1.Now()
+			kcluster.Status.LastReconcileTime = &now
+
+			// Update job status here to trigger a new reconciliation
+			return cc.Controller.UpdateClusterStatusInApiServer(metaObject, &kcluster.Status)
 		}
 	}
 
-	err = cc.Controller.UpdateClusterStatus(metaObject, kcluster.Spec.ClusterReplicaSpec, &kcluster.Status)
+	configMap, err := cc.ReconcileConfigMap(kcluster)
+	if err != nil {
+		log.Warnf("ReconcileServices error %v", err)
+		return err
+	}
+
+	// Diff current active pods/services with replicas.
+	for rtype, spec := range kcluster.Spec.ClusterReplicaSpec {
+		err = cc.ReconcilePods(kcluster, rtype, spec, pods, configMap)
+		if err != nil {
+			log.Warnf("ReconcilePods error %v", err)
+			return err
+		}
+
+		err = cc.ReconcileServices(kcluster, rtype, spec, services, configMap)
+		if err != nil {
+			log.Warnf("ReconcileServices error %v", err)
+			return err
+		}
+	}
+
+	err = schemaReconciler.UpdateClusterStatus(metaObject, kcluster.Spec.ClusterReplicaSpec, &kcluster.Status)
 	if err != nil {
 		log.Warnf("UpdateJobStatus error %v", err)
 		return err
@@ -574,15 +567,16 @@ func (cc *ClusterController) CleanupCluster(runtimeObject runtime.Object) error 
 }
 
 // ResetExpectations reset the expectation for creates and deletes of pod/service to zero.
-func (cc *ClusterController) ResetExpectations(clusterKey string, replicas map[v1alpha1.ReplicaType]*v1alpha1.ReplicaSpec) error {
+func (cc *ClusterController) ResetExpectations(clusterKey string, replicas map[v1alpha1.ReplicaType]*v1alpha1.ReplicaSpec,
+	reconciler common.ClusterSchemaReconciler) error {
 	var allErrs error
 	for rtype := range replicas {
 		expectationPodsKey := expectation.GenExpectationPodsKey(clusterKey, string(rtype))
-		if err := cc.Expectations.SetExpectations(expectationPodsKey, 0, 0); err != nil {
+		if err := reconciler.SetExpectations(expectationPodsKey, 0, 0); err != nil {
 			allErrs = err
 		}
 		expectationServicesKey := expectation.GenExpectationServicesKey(clusterKey, string(rtype))
-		if err := cc.Expectations.SetExpectations(expectationServicesKey, 0, 0); err != nil {
+		if err := reconciler.SetExpectations(expectationServicesKey, 0, 0); err != nil {
 			allErrs = fmt.Errorf("%s: %w", allErrs.Error(), err)
 		}
 	}
@@ -622,4 +616,10 @@ func (cc *ClusterController) DeletePodAndServices(runtimeObject runtime.Object, 
 		}
 	}
 	return nil
+}
+
+func (cc *ClusterController) GetSchemaReconciler(clusterType v1alpha1.ClusterType) common.ClusterSchemaReconciler {
+	cc.SchemaReconcilerMutux.Lock()
+	defer cc.SchemaReconcilerMutux.Unlock()
+	return cc.SchemaReconcilerManager[cluster_schema.ClusterSchema(clusterType)]
 }

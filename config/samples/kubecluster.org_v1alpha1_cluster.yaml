@@ -1,8 +1,7 @@
 apiVersion: kubecluster.org/v1alpha1
-kind: Cluster
+kind: KubeCLuster
 metadata:
   labels:
-    app.kubernetes.io/name: cluster
     app.kubernetes.io/instance: cluster-sample
     app.kubernetes.io/part-of: kubecluster
     app.kubernetes.io/managed-by: kustomize

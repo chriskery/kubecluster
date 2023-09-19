@@ -109,7 +109,7 @@ func CalcPGMinResources(minMember int32, replicas map[v1alpha1.ReplicaType]*v1al
 	var replicasPriority ReplicasPriority
 	for t, replica := range replicas {
 		rp := ReplicaPriority{0, *replica}
-		pc := replica.Template.PriorityClassName
+		pc := replica.Template.Spec.PriorityClassName
 
 		priorityClass, err := pcGetFunc(pc)
 		if err != nil || priorityClass == nil {
@@ -135,7 +135,7 @@ func CalcPGMinResources(minMember int32, replicas map[v1alpha1.ReplicaType]*v1al
 				break
 			}
 			podCnt++
-			for _, c := range task.Template.Containers {
+			for _, c := range task.Template.Spec.Containers {
 				AddResourceList(minAvailableTasksRes, c.Resources.Requests, c.Resources.Limits)
 			}
 		}

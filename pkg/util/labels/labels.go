@@ -53,6 +53,10 @@ func HasKnownLabels(labels map[string]string, groupName string) bool {
 	return has
 }
 
-func SetJobRole(labels map[string]string, role string) {
+func SetClusterRole(labels map[string]string, role string) {
 	labels[v1alpha1.ClusterRoleLabel] = role
+}
+
+func SetClusterType(labels map[string]string, clusterType string) {
+	labels[v1alpha1.ClusterTypeLabel] = clusterType
 }

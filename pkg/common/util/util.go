@@ -34,8 +34,8 @@ func ConvertServiceList(list []corev1.Service) []*corev1.Service {
 	return ret
 }
 
-// JobControlledPodList filter pod list owned by the job.
-func JobControlledPodList(list []corev1.Pod, job metav1.Object) []*corev1.Pod {
+// KubeClusterControlledPodList filter pod list owned by the job.
+func KubeClusterControlledPodList(list []corev1.Pod, job metav1.Object) []*corev1.Pod {
 	if list == nil {
 		return nil
 	}

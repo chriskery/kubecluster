@@ -9,7 +9,12 @@ func GenExpectationPodsKey(jobKey string, replicaType string) string {
 	return jobKey + "/" + strings.ToLower(replicaType) + "/pods"
 }
 
-// GenExpectationPodsKey generates an expectation key for services of a job
+// GenExpectationServicesKey generates an expectation key for services of a job
 func GenExpectationServicesKey(jobKey string, replicaType string) string {
 	return jobKey + "/" + strings.ToLower(replicaType) + "/services"
+}
+
+// GenExpectationConfigMapKey generates an expectation key for services of a job
+func GenExpectationConfigMapKey(jobKey string) string {
+	return jobKey + "/configmap"
 }

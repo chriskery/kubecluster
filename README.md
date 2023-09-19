@@ -1,8 +1,8 @@
 # kubecluster
-// TODO(user): Add simple overview of use/purpose
+### A simple way to create multiple type of clusters in the kubernetes cluster
 
 ## Description
-// TODO(user): An in-depth paragraph about your project and overview of use
+Just with a 
 
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.

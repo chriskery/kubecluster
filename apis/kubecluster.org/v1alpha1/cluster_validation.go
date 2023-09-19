@@ -27,12 +27,12 @@ func validateV1alphaClusterSpecs(spec ClusterSpec) error {
 		defaultContainerName = spec.MainContainer
 	}
 	for rType, value := range spec.ClusterReplicaSpec {
-		if value == nil || len(value.Template.Containers) == 0 {
+		if value == nil || len(value.Template.Spec.Containers) == 0 {
 			return fmt.Errorf("KubeCluster is not valid: containers definition expected in %v", rType)
 		}
 		// Make sure the image is defined in the container.
 		numNamedkubenode := 0
-		for _, container := range value.Template.Containers {
+		for _, container := range value.Template.Spec.Containers {
 			if container.Image == "" {
 				msg := fmt.Sprintf("KubeCluster is not valid: Image is undefined in the container of %v", rType)
 				return fmt.Errorf(msg)
