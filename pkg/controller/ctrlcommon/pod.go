@@ -12,11 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+package ctrlcommon
 
 import (
 	"fmt"
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/kubecluster/pkg/common"
 	"github.com/kubecluster/pkg/controller/expectation"
 	"github.com/kubecluster/pkg/core"
 	"github.com/kubecluster/pkg/util"
@@ -64,28 +65,38 @@ func (cc *ClusterController) GetPodSlices(pods []*v1.Pod, replicas int, logger *
 }
 
 // CreateNewPod creates a new pod for the given index and type.
-func (cc *ClusterController) CreateNewPod(kcluster *kubeclusterorgv1alpha1.KubeCluster, rt string, index int, spec *kubeclusterorgv1alpha1.ReplicaSpec, controller bool, replicas map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec, configMap *v1.ConfigMap) error {
-	jobKey, err := KeyFunc(kcluster)
+func (cc *ClusterController) CreateNewPod(
+	kcluster *kubeclusterorgv1alpha1.KubeCluster,
+	rType kubeclusterorgv1alpha1.ReplicaType,
+	index int,
+	spec *kubeclusterorgv1alpha1.ReplicaSpec,
+	controller bool,
+	replicas map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
+	configMap *v1.ConfigMap,
+) error {
+	clusterKey, err := KeyFunc(kcluster)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for kcluster object %#v: %v", kcluster, err))
 		return err
 	}
-	logger := util.LoggerForReplica(kcluster, rt)
+	logger := util.LoggerForReplica(kcluster, rType)
 
 	// Set type and index for the worker.
 	labels := cc.GenLabels(kcluster.GetName())
-	utillabels.SetReplicaType(labels, rt)
+	utillabels.SetReplicaType(labels, utillabels.GenReplicaTypeLabel(rType))
 	utillabels.SetReplicaIndex(labels, index)
+	utillabels.SetClusterType(labels, string(kcluster.Spec.ClusterType))
 
 	if controller {
 		utillabels.SetClusterRole(labels, "controller")
 	}
 
-	podTemplate := spec.Template.DeepCopy()
+	var podTemplate *v1.PodTemplateSpec
+	podTemplate = (*v1.PodTemplateSpec)(spec.Template.DeepCopy())
 
 	idxStr := strconv.Itoa(index)
 	// Set name for the template.
-	podTemplate.Name = GenGeneralName(kcluster.GetName(), rt, idxStr)
+	podTemplate.Name = common.GenGeneralName(kcluster.GetName(), rType, idxStr)
 
 	if podTemplate.Labels == nil {
 		podTemplate.Labels = make(map[string]string)
@@ -96,7 +107,7 @@ func (cc *ClusterController) CreateNewPod(kcluster *kubeclusterorgv1alpha1.KubeC
 	}
 
 	schemaReconciler := cc.GetSchemaReconciler(kcluster.Spec.ClusterType)
-	if err = schemaReconciler.SetClusterSpec(kcluster, podTemplate, rt, idxStr); err != nil {
+	if err = schemaReconciler.SetClusterSpec(kcluster, podTemplate, rType, idxStr, configMap); err != nil {
 		return err
 	}
 
@@ -107,7 +118,7 @@ func (cc *ClusterController) CreateNewPod(kcluster *kubeclusterorgv1alpha1.KubeC
 		logger.Warning(errMsg)
 		cc.Recorder.Event(kcluster, v1.EventTypeWarning, podTemplateRestartPolicyReason, errMsg)
 	}
-	core.SetRestartPolicy((*v1.PodTemplateSpec)(podTemplate), spec)
+	core.SetRestartPolicy(podTemplate, spec)
 
 	// if gang-scheduling is enabled:
 	// 1. if user has specified other scheduler, we report a warning without overriding any fields.
@@ -118,18 +129,18 @@ func (cc *ClusterController) CreateNewPod(kcluster *kubeclusterorgv1alpha1.KubeC
 			logger.Warning(errMsg)
 			cc.Recorder.Event(kcluster, v1.EventTypeWarning, podTemplateSchedulerNameReason, errMsg)
 		}
-		cc.PodGroupControl.DecoratePodTemplateSpec((*v1.PodTemplateSpec)(podTemplate), kcluster, rt)
+		cc.PodGroupControl.DecoratePodTemplateSpec((*v1.PodTemplateSpec)(podTemplate), kcluster, string(rType))
 	}
 
 	// Creation is expected when there is no error returned
 	// We use `RaiseExpectations` here to accumulate expectations since `SetExpectations` has no such kind of ability
-	expectationPodsKey := expectation.GenExpectationPodsKey(jobKey, rt)
+	expectationPodsKey := expectation.GenExpectationPodsKey(clusterKey, string(rType))
 	schemaReconciler.RaiseExpectations(expectationPodsKey, 1, 0)
 
 	controllerRef := cc.GenOwnerReference(kcluster)
 	err = cc.PodControl.CreatePodsWithControllerRef(
 		kcluster.GetNamespace(),
-		(*v1.PodTemplateSpec)(podTemplate),
+		(podTemplate),
 		kcluster,
 		controllerRef)
 	if err != nil && errors.IsTimeout(err) {

@@ -35,7 +35,7 @@ import (
 // The only exception is when the CRD spec is invalid and we can't parse the type into the corresponding
 // go struct.
 type CRDClient interface {
-	// Update a Job.
+	// Update a Cluster.
 	Update(obj *metav1unstructured.Unstructured) error
 }
 

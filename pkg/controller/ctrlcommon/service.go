@@ -1,4 +1,4 @@
-package common
+package ctrlcommon
 
 import (
 	"fmt"
@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"strconv"
-	"strings"
 )
 
 var (
@@ -33,8 +32,8 @@ func (cc *ClusterController) CreateNewService(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
 	spec *kubeclusterorgv1alpha1.ReplicaSpec,
-	defaultContainerName string,
 	index string,
+	defaultContainerName string,
 	expectations expectation.ControllerExpectationsInterface) error {
 	clusetrKey, err := KeyFunc(kcluster)
 	if err != nil {
@@ -42,9 +41,8 @@ func (cc *ClusterController) CreateNewService(
 		return err
 	}
 
-	rt := strings.ToLower(string(rtype))
-	labels := cc.GenLabels(kcluster.GetName())
-	utillabels.SetReplicaType(labels, rt)
+	labels := utillabels.GenLabels(common.ControllerName, kcluster.GetName())
+	utillabels.SetReplicaType(labels, utillabels.GenReplicaTypeLabel(rtype))
 	utillabels.SetReplicaIndexStr(labels, index)
 	utillabels.SetClusterType(labels, string(kcluster.Spec.ClusterType))
 
@@ -67,13 +65,13 @@ func (cc *ClusterController) CreateNewService(
 		service.Spec.Ports = append(service.Spec.Ports, svcPort)
 	}
 
-	service.Name = GenGeneralName(kcluster.GetName(), rt, index)
+	service.Name = common.GenGeneralName(kcluster.GetName(), rtype, index)
 	service.Labels = labels
 	// Create OwnerReference.
 	controllerRef := cc.GenOwnerReference(kcluster)
 
 	// Creation is expected when there is no error returned
-	expectationServicesKey := expectation.GenExpectationServicesKey(clusetrKey, rt)
+	expectationServicesKey := expectation.GenExpectationServicesKey(clusetrKey, string(rtype))
 	expectations.RaiseExpectations(expectationServicesKey, 1, 0)
 
 	err = cc.ServiceControl.CreateServicesWithControllerRef(kcluster.GetNamespace(), service, kcluster, controllerRef)
@@ -105,19 +103,18 @@ func (cc *ClusterController) ReconcilePods(
 	spec *kubeclusterorgv1alpha1.ReplicaSpec,
 	pods []*corev1.Pod,
 	configMap *corev1.ConfigMap) error {
-	rt := strings.ToLower(string(rType))
 	clusterKey, err := KeyFunc(kcluster)
 	if err != nil {
 		utilruntime.HandleError(fmt.Errorf("couldn't get key for kcluster object %#v: %v", kcluster, err))
 		return err
 	}
 	clusterKind := cc.Controller.GetAPIGroupVersionKind().Kind
-	expectationPodsKey := expectation.GenExpectationPodsKey(clusterKey, rt)
+	expectationPodsKey := expectation.GenExpectationPodsKey(clusterKey, string(rType))
 
 	// Convert ReplicaType to lower string.
-	logger := util.LoggerForReplica(kcluster, rt)
+	logger := util.LoggerForReplica(kcluster, (rType))
 	// Get all pods for the type rt.
-	pods, err = cc.FilterPodsForReplicaType(pods, rt)
+	pods, err = cc.FilterPodsForReplicaType(pods, utillabels.GenReplicaTypeLabel(rType))
 	if err != nil {
 		return err
 	}
@@ -136,13 +133,13 @@ func (cc *ClusterController) ReconcilePods(
 	podSlices := cc.GetPodSlices(pods, numReplicas, logger)
 	for index, podSlice := range podSlices {
 		if len(podSlice) > 1 {
-			logger.Warningf("We have too many pods for %s %d", rt, index)
+			logger.Warningf("We have too many pods for %s %d", rType, index)
 		} else if len(podSlice) == 0 {
-			logger.Infof("Need to create new pod: %s-%d", rt, index)
+			logger.Infof("Need to create new pod: %s-%d", rType, index)
 
 			// check if this replica is the master role
 			controllerRole = schemaReconciler.IsController(kcluster.Spec.ClusterReplicaSpec, rType, index)
-			err = cc.CreateNewPod(kcluster, rt, index, spec, controllerRole, kcluster.Spec.ClusterReplicaSpec, configMap)
+			err = cc.CreateNewPod(kcluster, rType, index, spec, controllerRole, kcluster.Spec.ClusterReplicaSpec, configMap)
 			if err != nil {
 				return err
 			}
@@ -168,6 +165,7 @@ func (cc *ClusterController) ReconcilePods(
 					exitCode = state.Terminated.ExitCode
 					logger.Infof("Pod: %v.%v exited with code %v", pod.Namespace, pod.Name, exitCode)
 					cc.Recorder.Eventf(kcluster, corev1.EventTypeNormal, exitedWithCodeReason, "Pod: %v.%v exited with code %v", pod.Namespace, pod.Name, exitCode)
+					break
 				}
 			}
 			// Check if the pod is retryable.
@@ -191,18 +189,23 @@ func (cc *ClusterController) ReconcilePods(
 				common.RestartedClustersCounterInc(kcluster.GetNamespace(), kcluster.Spec.ClusterType)
 			}
 
-			updateJobReplicaStatuses(&kcluster.Status, rType, pod)
+			updateClusterReplicaStatuses(&kcluster.Status, rType, pod)
 		}
 	}
 	return nil
 }
 
-func (cc *ClusterController) ReconcileServices(kcluster *kubeclusterorgv1alpha1.KubeCluster, rtype kubeclusterorgv1alpha1.ReplicaType, spec *kubeclusterorgv1alpha1.ReplicaSpec, services []*corev1.Service, configMap *corev1.ConfigMap) error {
+func (cc *ClusterController) ReconcileServices(
+	kcluster *kubeclusterorgv1alpha1.KubeCluster,
+	rtype kubeclusterorgv1alpha1.ReplicaType,
+	spec *kubeclusterorgv1alpha1.ReplicaSpec,
+	services []*corev1.Service,
+	_ *corev1.ConfigMap,
+) error {
 	// Convert ReplicaType to lower string.
-	rt := strings.ToLower(string(rtype))
 	replicas := int(*spec.Replicas)
 	// Get all services for the type rt.
-	services, err := cc.Controller.FilterServicesForReplicaType(services, rt)
+	services, err := cc.Controller.FilterServicesForReplicaType(services, utillabels.GenReplicaTypeLabel(rtype))
 	if err != nil {
 		return err
 	}
@@ -214,13 +217,13 @@ func (cc *ClusterController) ReconcileServices(kcluster *kubeclusterorgv1alpha1.
 	// If replica is 4, return a slice with size 4. [[0],[1],[2],[]], a svc with replica-index 3 will be created.
 	//
 	// If replica is 1, return a slice with size 3. [[0],[1],[2]], svc with replica-index 1 and 2 are out of range and will be deleted.
-	serviceSlices := cc.Controller.GetServiceSlices(services, replicas, util.LoggerForReplica(kcluster, rt))
+	serviceSlices := cc.Controller.GetServiceSlices(services, replicas, util.LoggerForReplica(kcluster, (rtype)))
 
 	for index, serviceSlice := range serviceSlices {
 		if len(serviceSlice) > 1 {
-			util.LoggerForReplica(kcluster, rt).Warningf("We have too many services for %s %d", rtype, index)
+			util.LoggerForReplica(kcluster, rtype).Warningf("We have too many services for %s %d", rtype, index)
 		} else if len(serviceSlice) == 0 {
-			util.LoggerForReplica(kcluster, rt).Infof("need to create new service: %s-%d", rtype, index)
+			util.LoggerForReplica(kcluster, rtype).Infof("need to create new service: %s-%d", rtype, index)
 			err = cc.CreateNewService(
 				kcluster,
 				rtype,

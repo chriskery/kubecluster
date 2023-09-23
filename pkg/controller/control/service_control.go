@@ -207,16 +207,3 @@ func (f *FakeServiceControl) Clear() {
 	f.CreateLimit = 0
 	f.CreateCallCount = 0
 }
-
-// ConfigMapControlInterface is an interface that knows how to add or delete ConfigMaps
-// created as an interface to allow testing.
-type ConfigMapControlInterface interface {
-	// CreateConfigMaps creates new Services according to the spec.
-	CreateConfigMaps(namespace string, configmap *v1.ConfigMap, object runtime.Object) error
-	// CreateConfigMapsWithControllerRef creates new services according to the spec, and sets object as the service's controller.
-	CreateConfigMapsWithControllerRef(namespace string, configmap *v1.ConfigMap, object runtime.Object, controllerRef *metav1.OwnerReference) error
-	// PatchConfigMap patches the service.
-	PatchConfigMap(namespace, name string, data []byte) error
-	// DeleteConfigMap deletes the service identified by serviceID.
-	DeleteConfigMap(namespace, configMapID string, object runtime.Object) error
-}

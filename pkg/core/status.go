@@ -30,8 +30,8 @@ func InitializeReplicaStatuses(jobStatus *kubeclusterorgv1alpha1.ClusterStatus, 
 	jobStatus.ReplicaStatuses[rtype] = &kubeclusterorgv1alpha1.ReplicaStatus{}
 }
 
-// UpdateJobReplicaStatuses updates the JobReplicaStatuses according to the pod.
-func UpdateJobReplicaStatuses(jobStatus *kubeclusterorgv1alpha1.ClusterStatus, rtype kubeclusterorgv1alpha1.ReplicaType, pod *corev1.Pod) {
+// UpdateClusterReplicaStatuses updates the ClusterReplicaStatuses according to the pod.
+func UpdateClusterReplicaStatuses(jobStatus *kubeclusterorgv1alpha1.ClusterStatus, rtype kubeclusterorgv1alpha1.ReplicaType, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		if pod.DeletionTimestamp != nil {

@@ -1,13 +1,16 @@
 package v1alpha1
 
 import (
+	"errors"
 	"fmt"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"strings"
 )
 
 func ValidateV1alphaCluster(cluster *KubeCluster) error {
 	if errors := apimachineryvalidation.NameIsDNS1035Label(cluster.ObjectMeta.Name, false); errors != nil {
-		return fmt.Errorf("TFJob name is invalid: %v", errors)
+		return fmt.Errorf("TFCluster name is invalid: %v", errors)
 	}
 	if err := validateV1alphaClusterSpecs(cluster.Spec); err != nil {
 		return err
@@ -27,6 +30,9 @@ func validateV1alphaClusterSpecs(spec ClusterSpec) error {
 		defaultContainerName = spec.MainContainer
 	}
 	for rType, value := range spec.ClusterReplicaSpec {
+		if errs := validation.IsDNS1035Label(strings.ToLower(string(rType))); len(errs) != 0 {
+			return errors.New(strings.Join(errs, ";"))
+		}
 		if value == nil || len(value.Template.Spec.Containers) == 0 {
 			return fmt.Errorf("KubeCluster is not valid: containers definition expected in %v", rType)
 		}

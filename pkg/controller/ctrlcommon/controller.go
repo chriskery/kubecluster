@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package ctrlcommon
 
 import (
 	"fmt"
@@ -206,8 +206,8 @@ func (cc *ClusterController) GenLabels(clusterType string) map[string]string {
 }
 
 // GetPortsFromClusterSpec gets the ports of job container. Port could be nil, if distributed communication strategy doesn't need and no other ports that need to be exposed.
-func (cc *ClusterController) GetPortsFromClusterSpec(spec *v1alpha1.ReplicaSpec, containerName string) (map[string]int32, error) {
-	return core.GetPortsFromJob(spec, containerName)
+func (cc *ClusterController) cat(spec *v1alpha1.ReplicaSpec, containerName string) (map[string]int32, error) {
+	return core.GetPortsFromCluster(spec, containerName)
 }
 
 // resolveControllerRef returns the KubeCluster referenced by a ControllerRef,
@@ -244,7 +244,7 @@ func (cc *ClusterController) RegisterSchema(schema cluster_schema.ClusterSchema,
 }
 
 func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster, schemaReconciler common.ClusterSchemaReconciler) error {
-	metaObject := kcluster.GetObjectMeta()
+	metaObject := metav1.Object(kcluster)
 	runtimeObject := runtime.Object(kcluster)
 	runPolicy := &kcluster.Spec.RunPolicy
 	clusterKey, err := KeyFunc(kcluster)
@@ -253,7 +253,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 		return err
 	}
 	// Reset expectations
-	// 1. Since `ReconcileJobs` is called, we expect that previous expectations are all satisfied,
+	// 1. Since `ReconcileClusters` is called, we expect that previous expectations are all satisfied,
 	//    and it's safe to reset the expectations
 	// 2. Reset expectations can avoid dirty data such as `expectedDeletion = -1`
 	//    (pod or service was deleted unexpectedly)
@@ -270,12 +270,12 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 
 	services, err := cc.Controller.GetServicesForCluster(kcluster)
 	if err != nil {
-		log.Warnf("GetServicesForJob error %v", err)
+		log.Warnf("GetServicesForCluster error %v", err)
 		return err
 	}
 
 	if util.IsFinished(kcluster.Status) {
-		// If the Job is failed, delete all pods relative resource
+		// If the Cluster is failed, delete all pods relative resource
 		if err = cc.CleanUpResources(runPolicy, runtimeObject, metaObject, kcluster.Status, pods); err != nil {
 			return err
 		}
@@ -348,7 +348,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 
 	if exceedsBackoffLimit || pastBackoffLimit {
 		// check if the number of pod restart exceeds backoff (for restart OnFailure only)
-		// OR if the number of failed jobs increased since the last syncJob
+		// OR if the number of failed jobs increased since the last syncCluster
 		clusterExceedsLimit = true
 		failureMessage = fmt.Sprintf("KubeCLuster %s has failed because it has reached the specified backoff limit", clusterName)
 	} else if cc.PastActiveDeadline(runPolicy, kcluster.Status) {
@@ -357,7 +357,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 	}
 
 	if clusterExceedsLimit {
-		// If the Job exceeds backoff limit or is past active deadline
+		// If the Cluster exceeds backoff limit or is past active deadline
 		// delete all pods and services, then set the status to failed
 		if err = cc.DeletePodAndServices(runtimeObject, runPolicy, kcluster.Status, pods); err != nil {
 			return err
@@ -490,12 +490,23 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 
 	err = schemaReconciler.UpdateClusterStatus(metaObject, kcluster.Spec.ClusterReplicaSpec, &kcluster.Status)
 	if err != nil {
-		log.Warnf("UpdateJobStatus error %v", err)
+		log.Warnf("UpdateClusterStatus error %v", err)
 		return err
 	}
 	// No need to update the job status if the status hasn't changed since last time.
 	if !reflect.DeepEqual(*oldStatus, &kcluster.Status) {
 		return cc.Controller.UpdateClusterStatusInApiServer(metaObject, &kcluster.Status)
+	}
+
+	configMapDeepCopy := configMap.DeepCopy()
+	err = schemaReconciler.UpdateConfigMap(kcluster, configMapDeepCopy)
+	if err != nil {
+		log.Warnf("UpdateClusterStatus error %v", err)
+		return err
+	}
+	// No need to update the job status if the status hasn't changed since last time.
+	if !reflect.DeepEqual(configMapDeepCopy.Data, configMap.Data) {
+		return cc.Controller.UpdateConfigMapInApiServer(metaObject, configMapDeepCopy)
 	}
 	return nil
 }
@@ -622,4 +633,8 @@ func (cc *ClusterController) GetSchemaReconciler(clusterType v1alpha1.ClusterTyp
 	cc.SchemaReconcilerMutux.Lock()
 	defer cc.SchemaReconcilerMutux.Unlock()
 	return cc.SchemaReconcilerManager[cluster_schema.ClusterSchema(clusterType)]
+}
+
+func (cc *ClusterController) GetPortsFromClusterSpec(spec *v1alpha1.ReplicaSpec, defaultContainerName string) (map[string]int32, error) {
+	return core.GetPortsFromCluster(spec, defaultContainerName)
 }

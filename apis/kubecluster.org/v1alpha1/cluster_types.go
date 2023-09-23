@@ -51,7 +51,7 @@ type ClusterSpec struct {
 	ClusterType ClusterType `json:"clusterType"`
 
 	//ClusterType define the template of the cluster to be created
-	ClusterReplicaSpec map[ReplicaType]*ReplicaSpec `json:"ClusterReplicaSpec"`
+	ClusterReplicaSpec map[ReplicaType]*ReplicaSpec `json:"clusterReplicaSpec"`
 
 	// MainContainer specifies name of the main container which
 	// run as kubenode.
@@ -85,9 +85,12 @@ type ClusterStatus struct {
 
 // +genclient
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
-// +resource:path=kubecluster
+// +resource:path=kubeclusters
+//+kubebuilder:resource:scope=Namespaced,path=kubeclusters,shortName={"kc","kcluster"}
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:printcolumn:JSONPath=`.metadata.creationTimestamp`,name="Age",type=date
+//+kubebuilder:printcolumn:JSONPath=`.status.conditions[-1:].type`,name="State",type=string
 
 // KubeCluster is the Schema for the clusters API
 type KubeCluster struct {

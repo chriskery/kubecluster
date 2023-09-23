@@ -19,7 +19,7 @@ import (
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	common2 "github.com/kubecluster/pkg/common"
 	"github.com/kubecluster/pkg/controller/cluster_schema"
-	"github.com/kubecluster/pkg/controller/common"
+	"github.com/kubecluster/pkg/controller/ctrlcommon"
 	"reflect"
 	"strings"
 
@@ -30,8 +30,8 @@ import (
 )
 
 // GenExpectationGenericKey generates an expectation key for {Kind} of a job
-func GenExpectationGenericKey(jobKey string, replicaType string, pl string) string {
-	return jobKey + "/" + strings.ToLower(replicaType) + "/" + pl
+func GenExpectationGenericKey(clusterKey string, replicaType string, pl string) string {
+	return clusterKey + "/" + strings.ToLower(replicaType) + "/" + pl
 }
 
 // LoggerForGenericKind generates log entry for generic Kubernetes resource Kind
@@ -69,10 +69,10 @@ func OnDependentCreateFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSc
 		}
 
 		if controllerRef := metav1.GetControllerOf(e.Object); controllerRef != nil {
-			jobKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
+			clusterKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
 			var expectKey string
 			pl := strings.ToLower(e.Object.GetObjectKind().GroupVersionKind().Kind) + "s"
-			expectKey = GenExpectationGenericKey(jobKey, rtype, pl)
+			expectKey = GenExpectationGenericKey(clusterKey, rtype, pl)
 			exp.CreationObserved(expectKey)
 			return true
 		}
@@ -82,7 +82,7 @@ func OnDependentCreateFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSc
 }
 
 // OnDependentUpdateFuncGeneric modify expectations when dependent (pod/service) update observed.
-func OnDependentUpdateFuncGeneric(jc *common.ClusterController) func(updateEvent event.UpdateEvent) bool {
+func OnDependentUpdateFuncGeneric(jc *ctrlcommon.ClusterController) func(updateEvent event.UpdateEvent) bool {
 	return func(e event.UpdateEvent) bool {
 		newObj := e.ObjectNew
 		oldObj := e.ObjectOld
@@ -138,9 +138,9 @@ func OnDependentDeleteFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSc
 		}
 
 		if controllerRef := metav1.GetControllerOf(e.Object); controllerRef != nil {
-			jobKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
+			clusterKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
 			pl := strings.ToLower(e.Object.GetObjectKind().GroupVersionKind().Kind) + "s"
-			var expectKey = GenExpectationGenericKey(jobKey, rtype, pl)
+			var expectKey = GenExpectationGenericKey(clusterKey, rtype, pl)
 
 			exp.DeletionObserved(expectKey)
 			return true

@@ -11,10 +11,20 @@ spec:
     kind: KubeCluster
     listKind: KubeClusterList
     plural: kubeclusters
+    shortNames:
+    - kc
+    - kcluster
     singular: kubecluster
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    - jsonPath: .status.conditions[-1:].type
+      name: State
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: KubeCluster is the Schema for the clusters API
@@ -34,7 +44,7 @@ spec:
           spec:
             description: ClusterSpec defines the desired state of KubeCluster
             properties:
-              ClusterReplicaSpec:
+              clusterReplicaSpec:
                 additionalProperties:
                   description: ReplicaSpec is a description of the replica
                   properties:
@@ -8218,7 +8228,7 @@ spec:
                     type: boolean
                 type: object
             required:
-            - ClusterReplicaSpec
+            - clusterReplicaSpec
             - clusterType
             type: object
           status:

@@ -79,8 +79,8 @@ func CalculateServiceSliceSize(services []*v1.Service, replicas int) int {
 	return MaxInt(size+1, replicas)
 }
 
-// GetPortsFromJob gets the ports of job container. Port could be nil, if distributed communication strategy doesn't need and no other ports that need to be exposed.
-func GetPortsFromJob(spec *kubeclusterorgv1alpha1.ReplicaSpec, defaultContainerName string) (map[string]int32, error) {
+// GetPortsFromCluster gets the ports of job container. Port could be nil, if distributed communication strategy doesn't need and no other ports that need to be exposed.
+func GetPortsFromCluster(spec *kubeclusterorgv1alpha1.ReplicaSpec, defaultContainerName string) (map[string]int32, error) {
 	ports := make(map[string]int32)
 
 	containers := spec.Template.Spec.Containers

@@ -1,4 +1,4 @@
-package common
+package ctrlcommon
 
 import (
 	"fmt"
@@ -10,6 +10,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"reflect"
 )
 
 var (
@@ -36,12 +37,15 @@ func (cc *ClusterController) ReconcileConfigMap(kcluster *v1alpha1.KubeCluster) 
 			return nil, err
 		}
 	}
-
-	err = schemaReconciler.ReconcileConfigMap(kcluster, configMap)
-	if err != nil {
+	deepCopy := configMap.DeepCopy()
+	if err = schemaReconciler.ReconcileConfigMap(kcluster, deepCopy); err != nil {
 		return nil, err
 	}
-	return configMap, nil
+	// No need to update the job status if the status hasn't changed since last time.
+	if !reflect.DeepEqual(deepCopy.Data, configMap.Data) {
+		err = cc.Controller.UpdateConfigMapInApiServer(kcluster, deepCopy)
+	}
+	return deepCopy, err
 }
 
 func (cc *ClusterController) CreateNewConfigMap(kcluster *v1alpha1.KubeCluster, expectations expectation.ControllerExpectationsInterface) (*v1.ConfigMap, error) {
@@ -58,12 +62,13 @@ func (cc *ClusterController) CreateNewConfigMap(kcluster *v1alpha1.KubeCluster, 
 	controllerRef := cc.GenOwnerReference(kcluster)
 
 	// Creation is expected when there is no error returned
-	expectationconfigmapsKey := expectation.GenExpectationConfigMapKey(clusetrKey)
-	expectations.RaiseExpectations(expectationconfigmapsKey, 1, 0)
+	expectationConfigmapsKey := expectation.GenExpectationConfigMapKey(clusetrKey)
+	expectations.RaiseExpectations(expectationConfigmapsKey, 1, 0)
 
-	configMap := &v1.ConfigMap{}
+	configMap := &v1.ConfigMap{Data: make(map[string]string)}
+	configMap.SetName(kcluster.GetName())
 
-	err = cc.ConfigMapControl.CreateConfigMapsWithControllerRef(kcluster.GetNamespace(), configMap, kcluster, controllerRef)
+	err = cc.ConfigMapControl.CreateConfigMapWithControllerRef(kcluster.GetNamespace(), configMap, kcluster, controllerRef)
 	if err != nil && errors.IsTimeout(err) {
 		// configmap is created but its initialization has timed out.
 		// If the initialization is successful eventually, the
@@ -78,7 +83,7 @@ func (cc *ClusterController) CreateNewConfigMap(kcluster *v1alpha1.KubeCluster, 
 		// Since error occurred(the informer won't observe this configmap),
 		// we decrement the expected number of creates
 		// and wait until next reconciliation
-		expectations.CreationObserved(expectationconfigmapsKey)
+		expectations.CreationObserved(expectationConfigmapsKey)
 		failedConfigMapCreationCount.Inc()
 		return nil, err
 	}

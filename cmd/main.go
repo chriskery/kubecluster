@@ -22,7 +22,7 @@ import (
 	"flag"
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"github.com/kubecluster/pkg/controller/cluster_schema"
-	"github.com/kubecluster/pkg/controller/common"
+	"github.com/kubecluster/pkg/controller/ctrlcommon"
 	"os"
 	"strings"
 	volcanoclient "volcano.sh/apis/pkg/client/clientset/versioned"
@@ -68,7 +68,7 @@ func main() {
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.Var(&enabledSchemes, "enable-scheme", "Enable scheme(s) as --enable-scheme=tfjob --enable-scheme=pytorchjob, case insensitive."+
-		" Now supporting TFJob, PyTorchJob, MXNetJob, XGBoostJob, PaddleJob. By default, all supported schemes will be enabled.")
+		" Now supporting TFCluster, PyTorchCluster, MXNetCluster, XGBoostCluster, PaddleCluster. By default, all supported schemes will be enabled.")
 	flag.IntVar(&controllerThreads, "controller-threads", 1, "Number of worker threads used by the controller.")
 	flag.StringVar(&gangSchedulerName, "gang-scheduler-name", "", "Now Supporting volcano and scheduler-plugins."+
 		" Note: If you set another scheduler name, the training-operator assumes it's the scheduler-plugins.")
@@ -126,18 +126,18 @@ func main() {
 
 func setupController(mgr ctrl.Manager, enabledSchemes cluster_schema.EnabledSchemes, gangSchedulerName string, controllerThreads int) {
 	// Prepare GangSchedulingSetupFunc
-	gangSchedulingSetupFunc := common.GenNonGangSchedulerSetupFunc()
-	if strings.EqualFold(gangSchedulerName, string(common.GangSchedulerVolcano)) {
+	gangSchedulingSetupFunc := ctrlcommon.GenNonGangSchedulerSetupFunc()
+	if strings.EqualFold(gangSchedulerName, string(ctrlcommon.GangSchedulerVolcano)) {
 		cfg := mgr.GetConfig()
 		volcanoClientSet := volcanoclient.NewForConfigOrDie(cfg)
-		gangSchedulingSetupFunc = common.GenVolcanoSetupFunc(volcanoClientSet)
+		gangSchedulingSetupFunc = ctrlcommon.GenVolcanoSetupFunc(volcanoClientSet)
 	} else if gangSchedulerName != "" {
-		gangSchedulingSetupFunc = common.GenSchedulerPluginsSetupFunc(mgr.GetClient(), gangSchedulerName)
+		gangSchedulingSetupFunc = ctrlcommon.GenSchedulerPluginsSetupFunc(mgr.GetClient(), gangSchedulerName)
 	}
 
 	reconciler := controller.NewReconciler(mgr, gangSchedulingSetupFunc)
 
-	// TODO: We need a general manager. all rest reconciler addsToManager
+	// TODO: We need a general manager. all rest util addsToManager
 	// Based on the user configuration, we start different controllers
 	if enabledSchemes.Empty() {
 		enabledSchemes.FillAll()
@@ -149,7 +149,7 @@ func setupController(mgr ctrl.Manager, enabledSchemes cluster_schema.EnabledSche
 			setupLog.Error(errors.New(errMsg), "cluster scheme is not supported", "scheme", s)
 			os.Exit(1)
 		}
-		schemaReconciler, err := schemaFactory(context.TODO())
+		schemaReconciler, err := schemaFactory(context.TODO(), mgr)
 		if err != nil {
 			setupLog.Error(errors.New(errMsg), "unable to create schema", "scheme", s)
 			os.Exit(1)

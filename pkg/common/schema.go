@@ -14,7 +14,7 @@ type ClusterSchemaReconciler interface {
 	GetDefaultContainerName() string
 
 	// SetClusterSpec sets the cluster spec for the pod
-	SetClusterSpec(kcluster *kubeclusterorgv1alpha1.KubeCluster, template *kubeclusterorgv1alpha1.ReplicaTemplate, rt string, str string) error
+	SetClusterSpec(kcluster *kubeclusterorgv1alpha1.KubeCluster, template *v1.PodTemplateSpec, rt kubeclusterorgv1alpha1.ReplicaType, indexStr string, configMap *v1.ConfigMap) error
 
 	ReconcileConfigMap(kcluster *kubeclusterorgv1alpha1.KubeCluster, configMap *v1.ConfigMap) error
 
@@ -24,4 +24,8 @@ type ClusterSchemaReconciler interface {
 
 	// UpdateClusterStatus updates the job status and job conditions
 	UpdateClusterStatus(kcluster metav1.Object, replicas map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec, clusterStatus *kubeclusterorgv1alpha1.ClusterStatus) error
+
+	UpdateConfigMap(kcluster *kubeclusterorgv1alpha1.KubeCluster, deepCopy *v1.ConfigMap) error
+
+	Default(kcluster *kubeclusterorgv1alpha1.KubeCluster)
 }

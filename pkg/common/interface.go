@@ -49,4 +49,6 @@ type ControllerInterface interface {
 
 	// GetGroupNameLabelValue Returns the Group Name(value) in the labels of the job
 	GetGroupNameLabelValue() string
+
+	UpdateConfigMapInApiServer(metav1.Object, *v1.ConfigMap) error
 }

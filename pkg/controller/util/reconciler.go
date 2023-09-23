@@ -19,7 +19,7 @@ import (
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	common2 "github.com/kubecluster/pkg/common"
 	"github.com/kubecluster/pkg/controller/cluster_schema"
-	"github.com/kubecluster/pkg/controller/common"
+	"github.com/kubecluster/pkg/controller/ctrlcommon"
 	"github.com/kubecluster/pkg/controller/expectation"
 	"github.com/kubecluster/pkg/util"
 	"reflect"
@@ -33,19 +33,27 @@ import (
 // Add/del counts are established by the controller at sync time, and updated as controllees are observed by the controller
 // manager.
 func SatisfiedExpectations(exp expectation.ControllerExpectationsInterface,
-	jobKey string,
+	clusterKey string,
 	replicaTypes []kubeclusterorgv1alpha1.ReplicaType) bool {
-	satisfied := false
-	for _, rtype := range replicaTypes {
-		// Check the expectations of the pods.
-		expectationPodsKey := expectation.GenExpectationPodsKey(jobKey, string(rtype))
-		satisfied = satisfied || exp.SatisfiedExpectations(expectationPodsKey)
-		// Check the expectations of the services.
-		expectationServicesKey := expectation.GenExpectationServicesKey(jobKey, string(rtype))
-		satisfied = satisfied || exp.SatisfiedExpectations(expectationServicesKey)
+
+	expectationPreSatisfiedKey := expectation.GenPreSatisfiedKey(clusterKey)
+	if !exp.PreSatisfiedExpectations(expectationPreSatisfiedKey) {
+		return false
 	}
 
-	return satisfied
+	for _, rtype := range replicaTypes {
+		// Check the expectations of the pods.
+		expectationPodsKey := expectation.GenExpectationPodsKey(clusterKey, string(rtype))
+		if !exp.SatisfiedExpectations(expectationPodsKey) {
+			return false
+		}
+		// Check the expectations of the services.
+		expectationServicesKey := expectation.GenExpectationServicesKey(clusterKey, string(rtype))
+		if !exp.SatisfiedExpectations(expectationServicesKey) {
+			return false
+		}
+	}
+	return true
 }
 
 // OnDependentCreateFunc modify expectations when dependent (pod/service) creation observed.
@@ -67,13 +75,13 @@ func OnDependentCreateFunc(schemaReconcilers map[cluster_schema.ClusterSchema]co
 
 		//logrus.Info("Update on create function ", ptjr.ControllerName(), " create object ", e.Object.GetName())
 		if controllerRef := metav1.GetControllerOf(e.Object); controllerRef != nil {
-			jobKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
+			clusterKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
 			var expectKey string
 			switch e.Object.(type) {
 			case *corev1.Pod:
-				expectKey = expectation.GenExpectationPodsKey(jobKey, rtype)
+				expectKey = expectation.GenExpectationPodsKey(clusterKey, rtype)
 			case *corev1.Service:
-				expectKey = expectation.GenExpectationServicesKey(jobKey, rtype)
+				expectKey = expectation.GenExpectationServicesKey(clusterKey, rtype)
 			default:
 				return false
 			}
@@ -86,7 +94,7 @@ func OnDependentCreateFunc(schemaReconcilers map[cluster_schema.ClusterSchema]co
 }
 
 // OnDependentUpdateFunc modify expectations when dependent (pod/service) update observed.
-func OnDependentUpdateFunc(cc *common.ClusterController) func(updateEvent event.UpdateEvent) bool {
+func OnDependentUpdateFunc(cc *ctrlcommon.ClusterController) func(updateEvent event.UpdateEvent) bool {
 	return func(e event.UpdateEvent) bool {
 		newObj := e.ObjectNew
 		oldObj := e.ObjectOld
@@ -136,7 +144,7 @@ func OnDependentUpdateFunc(cc *common.ClusterController) func(updateEvent event.
 // resolveControllerRef returns the job referenced by a ControllerRef,
 // or nil if the ControllerRef could not be resolved to a matching job
 // of the correct Kind.
-func resolveControllerRef(cc *common.ClusterController, namespace string, controllerRef *metav1.OwnerReference) metav1.Object {
+func resolveControllerRef(cc *ctrlcommon.ClusterController, namespace string, controllerRef *metav1.OwnerReference) metav1.Object {
 	// We can't look up by UID, so look up by Name and then verify UID.
 	// Don't even try to look up by Name if it's the wrong Kind.
 	if controllerRef.Kind != cc.Controller.GetAPIGroupVersionKind().Kind {
@@ -173,13 +181,13 @@ func OnDependentDeleteFunc(schemaReconcilers map[cluster_schema.ClusterSchema]co
 
 		// logrus.Info("Update on deleting function ", xgbr.ControllerName(), " delete object ", e.Object.GetName())
 		if controllerRef := metav1.GetControllerOf(e.Object); controllerRef != nil {
-			jobKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
+			clusterKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
 			var expectKey string
 			switch e.Object.(type) {
 			case *corev1.Pod:
-				expectKey = expectation.GenExpectationPodsKey(jobKey, rtype)
+				expectKey = expectation.GenExpectationPodsKey(clusterKey, rtype)
 			case *corev1.Service:
-				expectKey = expectation.GenExpectationServicesKey(jobKey, rtype)
+				expectKey = expectation.GenExpectationServicesKey(clusterKey, rtype)
 			default:
 				return false
 			}

@@ -79,6 +79,8 @@ type ControllerExpectationsInterface interface {
 	DeletionObserved(controllerKey string)
 	RaiseExpectations(controllerKey string, add, del int)
 	LowerExpectations(controllerKey string, add, del int)
+	SetPreSatisfiedExpectations(controllerKey string, satisfied bool)
+	PreSatisfiedExpectations(controllerKey string) bool
 }
 
 // ControllerExpectations is a cache mapping controllers to what they expect to see before being woken up for a sync.
@@ -182,6 +184,19 @@ func (r *ControllerExpectations) CreationObserved(controllerKey string) {
 // DeletionObserved atomically decrements the `del` expectation count of the given controller.
 func (r *ControllerExpectations) DeletionObserved(controllerKey string) {
 	r.LowerExpectations(controllerKey, 0, 1)
+}
+
+func (r *ControllerExpectations) SetPreSatisfiedExpectations(controllerKey string, satisfied bool) {
+
+}
+
+func (r *ControllerExpectations) PreSatisfiedExpectations(controllerKey string) bool {
+	exp, exists, err := r.GetByKey(controllerKey)
+	if err == nil && exists {
+		preSatisfied, ok := exp.(bool)
+		return preSatisfied && ok
+	}
+	return false
 }
 
 // Expectations are either fulfilled, or expire naturally.

@@ -18,6 +18,7 @@ import (
 	"errors"
 	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"strconv"
+	"strings"
 )
 
 func ReplicaIndex(labels map[string]string) (int, error) {
@@ -34,6 +35,10 @@ func SetReplicaIndex(labels map[string]string, idx int) {
 
 func SetReplicaIndexStr(labels map[string]string, idx string) {
 	labels[v1alpha1.ReplicaIndexLabel] = idx
+}
+
+func GenReplicaTypeLabel(rtype v1alpha1.ReplicaType) string {
+	return strings.ToLower(string(rtype))
 }
 
 func ReplicaType(labels map[string]string) (v1alpha1.ReplicaType, error) {
@@ -59,4 +64,12 @@ func SetClusterRole(labels map[string]string, role string) {
 
 func SetClusterType(labels map[string]string, clusterType string) {
 	labels[v1alpha1.ClusterTypeLabel] = clusterType
+}
+
+func GenLabels(controllerName, clusterType string) map[string]string {
+	clusterType = strings.Replace(clusterType, "/", "-", -1)
+	return map[string]string{
+		v1alpha1.ControllerNameLabel: controllerName,
+		v1alpha1.ClusterNameLabel:    clusterType,
+	}
 }

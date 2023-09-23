@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-package util
+package common
 
 import (
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
@@ -55,4 +55,23 @@ func GetReplicaTypes(specs map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusteror
 		keys = append(keys, k)
 	}
 	return keys
+}
+
+// ConvertPodListWithFilter converts pod list to pod pointer list with ObjectFilterFunction
+func ConvertPodListWithFilter(list []corev1.Pod, pass ObjectFilterFunction) []*corev1.Pod {
+	if list == nil {
+		return nil
+	}
+	ret := make([]*corev1.Pod, 0, len(list))
+	for i := range list {
+		obj := &list[i]
+		if pass != nil {
+			if pass(obj) {
+				ret = append(ret, obj)
+			}
+		} else {
+			ret = append(ret, obj)
+		}
+	}
+	return ret
 }

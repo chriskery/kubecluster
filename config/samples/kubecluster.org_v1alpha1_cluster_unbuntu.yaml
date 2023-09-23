@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/part-of: kubecluster
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: kubecluster
-  name: slurm-cluster-sample
+  name: slurm-cluster-sample-ubuntu
 spec:
   clusterType: slurm
   clusterReplicaSpec:
@@ -15,7 +15,7 @@ spec:
         spec:
           containers:
             - name: kubenode
-              image: centos
+              image: registry.cn-hangzhou.aliyuncs.com/eflops/slurm-dev:sysbench
               command: ['sh', '-c', 'echo "Hello, Kubernetes!" && sleep 36000']
               # Comment out the below resources to use the CPU.
               resources:
@@ -38,7 +38,7 @@ spec:
           containers:
             - name: kubenode
 #              image: registry.cn-hangzhou.aliyuncs.com/eflops/slurm-dev:sysbench
-              image: centos
+              image: registry.cn-hangzhou.aliyuncs.com/eflops/slurm-dev:sysbench
               resources:
                 limits:
                   memory: 2Gi

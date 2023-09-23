@@ -1,4 +1,4 @@
-package common
+package ctrlcommon
 
 import (
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
@@ -11,7 +11,7 @@ func initializeReplicaStatuses(clusterStatus *kubeclusterorgv1alpha1.ClusterStat
 	core.InitializeReplicaStatuses(clusterStatus, rtype)
 }
 
-// updateJobReplicaStatuses updates the JobReplicaStatuses according to the pod.
-func updateJobReplicaStatuses(clusterStatus *kubeclusterorgv1alpha1.ClusterStatus, rtype kubeclusterorgv1alpha1.ReplicaType, pod *corev1.Pod) {
-	core.UpdateJobReplicaStatuses(clusterStatus, rtype, pod)
+// updateClusterReplicaStatuses updates the ClusterReplicaStatuses according to the pod.
+func updateClusterReplicaStatuses(clusterStatus *kubeclusterorgv1alpha1.ClusterStatus, rtype kubeclusterorgv1alpha1.ReplicaType, pod *corev1.Pod) {
+	core.UpdateClusterReplicaStatuses(clusterStatus, rtype, pod)
 }
