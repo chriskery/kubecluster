@@ -17,8 +17,9 @@ package util
 import (
 	"fmt"
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/controller/common"
-	"github.com/kubecluster/pkg/controller/expectation"
+	common2 "github.com/kubecluster/pkg/common"
+	"github.com/kubecluster/pkg/controller/cluster_schema"
+	"github.com/kubecluster/pkg/controller/ctrlcommon"
 	"reflect"
 	"strings"
 
@@ -29,8 +30,8 @@ import (
 )
 
 // GenExpectationGenericKey generates an expectation key for {Kind} of a job
-func GenExpectationGenericKey(jobKey string, replicaType string, pl string) string {
-	return jobKey + "/" + strings.ToLower(replicaType) + "/" + pl
+func GenExpectationGenericKey(clusterKey string, replicaType string, pl string) string {
+	return clusterKey + "/" + strings.ToLower(replicaType) + "/" + pl
 }
 
 // LoggerForGenericKind generates log entry for generic Kubernetes resource Kind
@@ -51,18 +52,27 @@ func LoggerForGenericKind(obj metav1.Object, kind string) *log.Entry {
 }
 
 // OnDependentCreateFuncGeneric modify expectations when dependent (pod/service) creation observed.
-func OnDependentCreateFuncGeneric(exp expectation.ControllerExpectationsInterface) func(event.CreateEvent) bool {
+func OnDependentCreateFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSchema]common2.ClusterSchemaReconciler) func(event.CreateEvent) bool {
 	return func(e event.CreateEvent) bool {
+		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
+		if len(clusterType) == 0 {
+			return false
+		}
+		exp, ok := schemaReconcilers[cluster_schema.ClusterSchema(clusterType)]
+		if !ok {
+			return false
+		}
+
 		rtype := e.Object.GetLabels()[kubeclusterorgv1alpha1.ReplicaTypeLabel]
 		if len(rtype) == 0 {
 			return false
 		}
 
 		if controllerRef := metav1.GetControllerOf(e.Object); controllerRef != nil {
-			jobKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
+			clusterKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
 			var expectKey string
 			pl := strings.ToLower(e.Object.GetObjectKind().GroupVersionKind().Kind) + "s"
-			expectKey = GenExpectationGenericKey(jobKey, rtype, pl)
+			expectKey = GenExpectationGenericKey(clusterKey, rtype, pl)
 			exp.CreationObserved(expectKey)
 			return true
 		}
@@ -72,7 +82,7 @@ func OnDependentCreateFuncGeneric(exp expectation.ControllerExpectationsInterfac
 }
 
 // OnDependentUpdateFuncGeneric modify expectations when dependent (pod/service) update observed.
-func OnDependentUpdateFuncGeneric(jc *common.ClusterController) func(updateEvent event.UpdateEvent) bool {
+func OnDependentUpdateFuncGeneric(jc *ctrlcommon.ClusterController) func(updateEvent event.UpdateEvent) bool {
 	return func(e event.UpdateEvent) bool {
 		newObj := e.ObjectNew
 		oldObj := e.ObjectOld
@@ -111,8 +121,16 @@ func OnDependentUpdateFuncGeneric(jc *common.ClusterController) func(updateEvent
 }
 
 // OnDependentDeleteFuncGeneric modify expectations when dependent (pod/service) deletion observed.
-func OnDependentDeleteFuncGeneric(exp expectation.ControllerExpectationsInterface) func(event.DeleteEvent) bool {
+func OnDependentDeleteFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSchema]common2.ClusterSchemaReconciler) func(event.DeleteEvent) bool {
 	return func(e event.DeleteEvent) bool {
+		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
+		if len(clusterType) == 0 {
+			return false
+		}
+		exp, ok := schemaReconcilers[cluster_schema.ClusterSchema(clusterType)]
+		if !ok {
+			return false
+		}
 
 		rtype := e.Object.GetLabels()[kubeclusterorgv1alpha1.ReplicaTypeLabel]
 		if len(rtype) == 0 {
@@ -120,9 +138,9 @@ func OnDependentDeleteFuncGeneric(exp expectation.ControllerExpectationsInterfac
 		}
 
 		if controllerRef := metav1.GetControllerOf(e.Object); controllerRef != nil {
-			jobKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
+			clusterKey := fmt.Sprintf("%s/%s", e.Object.GetNamespace(), controllerRef.Name)
 			pl := strings.ToLower(e.Object.GetObjectKind().GroupVersionKind().Kind) + "s"
-			var expectKey = GenExpectationGenericKey(jobKey, rtype, pl)
+			var expectKey = GenExpectationGenericKey(clusterKey, rtype, pl)
 
 			exp.DeletionObserved(expectKey)
 			return true

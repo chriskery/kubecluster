@@ -1,6 +1,6 @@
 module github.com/kubecluster
 
-go 1.20
+go 1.21
 
 require (
 	github.com/go-logr/logr v1.2.4
@@ -12,6 +12,7 @@ require (
 	github.com/stretchr/testify v1.8.2
 	k8s.io/api v0.28.0
 	k8s.io/apimachinery v0.28.0
+	k8s.io/apiserver v0.28.0
 	k8s.io/client-go v0.28.0
 	k8s.io/code-generator v0.28.0
 	k8s.io/klog/v2 v2.100.1
@@ -19,11 +20,13 @@ require (
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
 	sigs.k8s.io/controller-runtime v0.16.0
 	sigs.k8s.io/scheduler-plugins v0.26.7
+	sigs.k8s.io/yaml v1.3.0
 	volcano.sh/apis v1.8.0
 )
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful/v3 v3.9.0 // indirect
@@ -78,5 +81,4 @@ require (
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
 )

@@ -26,3 +26,7 @@ Dockerfile.cross
 *~
 
 hack/openapi-gen
+
+vendor
+
+.run

@@ -1,13 +1,16 @@
 package v1alpha1
 
 import (
+	"errors"
 	"fmt"
 	apimachineryvalidation "k8s.io/apimachinery/pkg/api/validation"
+	"k8s.io/apimachinery/pkg/util/validation"
+	"strings"
 )
 
 func ValidateV1alphaCluster(cluster *KubeCluster) error {
 	if errors := apimachineryvalidation.NameIsDNS1035Label(cluster.ObjectMeta.Name, false); errors != nil {
-		return fmt.Errorf("TFJob name is invalid: %v", errors)
+		return fmt.Errorf("TFCluster name is invalid: %v", errors)
 	}
 	if err := validateV1alphaClusterSpecs(cluster.Spec); err != nil {
 		return err
@@ -27,12 +30,15 @@ func validateV1alphaClusterSpecs(spec ClusterSpec) error {
 		defaultContainerName = spec.MainContainer
 	}
 	for rType, value := range spec.ClusterReplicaSpec {
-		if value == nil || len(value.Template.Containers) == 0 {
+		if errs := validation.IsDNS1035Label(strings.ToLower(string(rType))); len(errs) != 0 {
+			return errors.New(strings.Join(errs, ";"))
+		}
+		if value == nil || len(value.Template.Spec.Containers) == 0 {
 			return fmt.Errorf("KubeCluster is not valid: containers definition expected in %v", rType)
 		}
 		// Make sure the image is defined in the container.
 		numNamedkubenode := 0
-		for _, container := range value.Template.Containers {
+		for _, container := range value.Template.Spec.Containers {
 			if container.Image == "" {
 				msg := fmt.Sprintf("KubeCluster is not valid: Image is undefined in the container of %v", rType)
 				return fmt.Errorf(msg)

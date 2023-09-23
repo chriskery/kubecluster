@@ -21,16 +21,20 @@ import (
 	"fmt"
 	"github.com/go-logr/logr"
 	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/common/util"
+	"github.com/kubecluster/pkg/common"
 	"github.com/kubecluster/pkg/controller/cluster_schema"
-	"github.com/kubecluster/pkg/controller/common"
 	"github.com/kubecluster/pkg/controller/control"
-	"github.com/kubecluster/pkg/controller/expectation"
+	"github.com/kubecluster/pkg/controller/ctrlcommon"
+	"github.com/kubecluster/pkg/controller/util"
+	"github.com/kubecluster/pkg/core"
 	util2 "github.com/kubecluster/pkg/util"
+	utillabels "github.com/kubecluster/pkg/util/labels"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/client-go/informers"
 	kubeclientset "k8s.io/client-go/kubernetes"
@@ -53,13 +57,27 @@ import (
 	"volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 )
 
-const controllerName = "kubecluster-controller"
+const (
+	// ErrResourceDoesNotExist is used as part of the Event 'reason' when some
+	// resource is missing in yaml
+	ErrResourceDoesNotExist = "ErrResourceDoesNotExist"
+	// MessageResourceDoesNotExist is used for Events when some
+	// resource is missing in yaml
+	MessageResourceDoesNotExist = "Resource %q is missing in yaml"
+	// ErrResourceExists is used as part of the Event 'reason' when an SlurmClusterCluster
+	// fails to sync due to dependent resources of the same name already
+	// existing.
+	ErrResourceExists = "ErrResourceExists"
+	// MessageResourceExists is the message used for Events when a resource
+	// fails to sync due to dependent resources already existing.
+	MessageResourceExists = "Resource %q of SlurmClusterClusterKind %q already exists and is not managed by SlurmClusterCluster"
+)
 
-func NewReconciler(mgr manager.Manager, gangSchedulingSetupFunc common.GangSchedulingSetupFunc) *KubeClusterReconciler {
+func NewReconciler(mgr manager.Manager, gangSchedulingSetupFunc ctrlcommon.GangSchedulingSetupFunc) *KubeClusterReconciler {
 	r := &KubeClusterReconciler{
 		Client:    mgr.GetClient(),
 		Scheme:    mgr.GetScheme(),
-		recorder:  mgr.GetEventRecorderFor(controllerName),
+		recorder:  mgr.GetEventRecorderFor(common.ControllerName),
 		apiReader: mgr.GetAPIReader(),
 		Log:       log.Log,
 	}
@@ -69,16 +87,17 @@ func NewReconciler(mgr manager.Manager, gangSchedulingSetupFunc common.GangSched
 	sharedInformers := informers.NewSharedInformerFactory(kubeClientSet, 0)
 	priorityClassInformer := sharedInformers.Scheduling().V1().PriorityClasses()
 
-	r.ClusterController = common.ClusterController{
+	r.ClusterController = ctrlcommon.ClusterController{
 		Controller:                  r,
-		Expectations:                expectation.NewControllerExpectations(),
 		Recorder:                    r.recorder,
 		KubeClientSet:               kubeClientSet,
 		PriorityClassLister:         priorityClassInformer.Lister(),
 		PriorityClassInformerSynced: priorityClassInformer.Informer().HasSynced,
 		PodControl:                  control.RealPodControl{KubeClient: kubeClientSet, Recorder: r.recorder},
 		ServiceControl:              control.RealServiceControl{KubeClient: kubeClientSet, Recorder: r.recorder},
-		SchemaReconcilerManager:     make(map[cluster_schema.ClusterSchema]cluster_schema.ClusterSchemaReconciler),
+		ConfigMapControl:            control.RealConfigMapControl{KubeClient: kubeClientSet, Recorder: r.recorder},
+		SchemaReconcilerManager:     make(map[cluster_schema.ClusterSchema]common.ClusterSchemaReconciler),
+		WorkQueue:                   &util.FakeWorkQueue{},
 	}
 
 	gangSchedulingSetupFunc(&r.ClusterController)
@@ -88,13 +107,79 @@ func NewReconciler(mgr manager.Manager, gangSchedulingSetupFunc common.GangSched
 
 // KubeClusterReconciler reconciles a KubeCluster object
 type KubeClusterReconciler struct {
-	common.ClusterController
+	ctrlcommon.ClusterController
 	client.Client
 	Scheme *runtime.Scheme
 
 	recorder  record.EventRecorder
 	apiReader client.Reader
 	Log       logr.Logger
+}
+
+func (r *KubeClusterReconciler) GetClusterFromInformerCache(namespace, name string) (metav1.Object, error) {
+	kcluster := &v1alpha1.KubeCluster{}
+	err := r.Get(context.TODO(), types.NamespacedName{
+		Namespace: namespace, Name: name,
+	}, kcluster)
+	return kcluster, err
+}
+
+func (r *KubeClusterReconciler) UpdateClusterStatusInApiServer(
+	metaObject metav1.Object,
+	clusterStatus *v1alpha1.ClusterStatus,
+) error {
+	if clusterStatus.ReplicaStatuses == nil {
+		clusterStatus.ReplicaStatuses = map[v1alpha1.ReplicaType]*v1alpha1.ReplicaStatus{}
+	}
+
+	kcluster, ok := metaObject.(*v1alpha1.KubeCluster)
+	if !ok {
+		return fmt.Errorf("%+v is not a type of KubeCLuster", metaObject)
+	}
+	common.ClearGeneratedFields(&kcluster.ObjectMeta)
+
+	// Cluster status passed in differs with status in job, update in basis of the passed in one.
+	if !equality.Semantic.DeepEqual(&kcluster.Status, clusterStatus) {
+		kcluster = kcluster.DeepCopy()
+		kcluster.Status = *clusterStatus.DeepCopy()
+	}
+
+	result := r.Status().Update(context.Background(), kcluster)
+
+	if result != nil {
+		r.Log.WithValues("kcluster", types.NamespacedName{
+			Namespace: kcluster.GetNamespace(),
+			Name:      kcluster.GetName(),
+		})
+		return result
+	}
+
+	return nil
+}
+
+func (r *KubeClusterReconciler) UpdateClusterStatus(kcluster metav1.Object, replicas map[v1alpha1.ReplicaType]*v1alpha1.ReplicaSpec, clusterStatus *v1alpha1.ClusterStatus) error {
+	return nil
+}
+
+func (r *KubeClusterReconciler) UpdateConfigMapInApiServer(metaObject metav1.Object, configMap *corev1.ConfigMap) error {
+	kcluster, ok := metaObject.(*v1alpha1.KubeCluster)
+	common.ClearGeneratedFields(&kcluster.ObjectMeta)
+	if !ok {
+		return fmt.Errorf("%+v is not a type of KubeCLuster", metaObject)
+	}
+
+	result := r.ConfigMapControl.UpdateConfigMap(metaObject.GetNamespace(), configMap)
+	if result != nil {
+		r.Log.WithValues("kcluster", types.NamespacedName{
+			Namespace: kcluster.GetNamespace(),
+			Name:      kcluster.GetName(),
+		}, "configmap update", types.NamespacedName{
+			Namespace: configMap.GetNamespace(),
+			Name:      configMap.GetName(),
+		})
+		return result
+	}
+	return nil
 }
 
 //+kubebuilder:rbac:groups=kubecluster.org,resources=clusters,verbs=get;list;watch;create;update;patch;delete
@@ -127,15 +212,14 @@ func (r *KubeClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return ctrl.Result{}, err
 	}
 
-	// Check if reconciliation is needed
-	clusterKey, err := common.KeyFunc(kcluster)
-	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get clusterKey for kubecluster object %#v: %v", kcluster, err))
+	schemaReconciler := r.GetSchemaReconciler(kcluster.Spec.ClusterType)
+	if err = schemaReconciler.ValidateV1KubeCluster(kcluster); err != nil {
+		r.Recorder.Eventf(kcluster, corev1.EventTypeWarning, util2.NewReason(v1alpha1.KubeClusterKind, util2.ClusterFailedValidationReason),
+			"KubeCluster failed validation because %s", err)
+		return ctrl.Result{}, err
 	}
 
-	replicaTypes := util.GetReplicaTypes(kcluster.Spec.ClusterReplicaSpec)
-	needReconcile := util.SatisfiedExpectations(r.Expectations, clusterKey, replicaTypes)
-
+	needReconcile := r.needReconcile(kcluster, schemaReconciler)
 	if !needReconcile || kcluster.GetDeletionTimestamp() != nil {
 		logger.Info("reconcile cancelled, kubecluster does not need to do reconcile or has been deleted",
 			"sync", needReconcile, "deleted", kcluster.GetDeletionTimestamp() != nil)
@@ -145,8 +229,9 @@ func (r *KubeClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	kcluster = kcluster.DeepCopy()
 	// Set default priorities to kubecluster
 	r.Scheme.Default(kcluster)
+	schemaReconciler.Default(kcluster)
 
-	if err = r.ReconcileKubeCluster(kcluster); err != nil {
+	if err = r.ReconcileKubeCluster(kcluster, schemaReconciler); err != nil {
 		logrus.Warnf("Reconcile Kube CLuster error %v", err)
 		return ctrl.Result{}, err
 	}
@@ -154,9 +239,20 @@ func (r *KubeClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	return ctrl.Result{}, nil
 }
 
+func (r *KubeClusterReconciler) needReconcile(kcluster *v1alpha1.KubeCluster, schemaReconciler common.ClusterSchemaReconciler) bool {
+	// Check if reconciliation is needed
+	clusterKey, err := ctrlcommon.KeyFunc(kcluster)
+	if err != nil {
+		utilruntime.HandleError(fmt.Errorf("couldn't get clusterKey for kubecluster object %#v: %v", kcluster, err))
+	}
+	replicaTypes := common.GetReplicaTypes(kcluster.Spec.ClusterReplicaSpec)
+	needReconcile := !util.SatisfiedExpectations(schemaReconciler, clusterKey, replicaTypes)
+	return needReconcile
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *KubeClusterReconciler) SetupWithManager(mgr ctrl.Manager, controllerThreads int) error {
-	c, err := controller.New(r.ControllerName(), mgr, controller.Options{
+	c, err := controller.New(common.ControllerName, mgr, controller.Options{
 		Reconciler:              r,
 		MaxConcurrentReconciles: controllerThreads,
 	})
@@ -174,15 +270,15 @@ func (r *KubeClusterReconciler) SetupWithManager(mgr ctrl.Manager, controllerThr
 	// eventHandler for owned objects
 	eventHandler := handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &v1alpha1.KubeCluster{}, handler.OnlyControllerOwner())
 	predicates := predicate.Funcs{
-		CreateFunc: util.OnDependentCreateFunc(r.Expectations),
+		CreateFunc: util.OnDependentCreateFunc(r.SchemaReconcilerManager),
 		UpdateFunc: util.OnDependentUpdateFunc(&r.ClusterController),
-		DeleteFunc: util.OnDependentDeleteFunc(r.Expectations),
+		DeleteFunc: util.OnDependentDeleteFunc(r.SchemaReconcilerManager),
 	}
 	// Create generic predicates
 	genericPredicates := predicate.Funcs{
-		CreateFunc: util.OnDependentCreateFuncGeneric(r.Expectations),
+		CreateFunc: util.OnDependentCreateFuncGeneric(r.SchemaReconcilerManager),
 		UpdateFunc: util.OnDependentUpdateFuncGeneric(&r.ClusterController),
-		DeleteFunc: util.OnDependentDeleteFuncGeneric(r.Expectations),
+		DeleteFunc: util.OnDependentDeleteFuncGeneric(r.SchemaReconcilerManager),
 	}
 	// inject watching for job related pod
 	if err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Pod{}), eventHandler, predicates); err != nil {
@@ -229,10 +325,6 @@ func (r *KubeClusterReconciler) onOwnerCreateFunc() func(event.CreateEvent) bool
 	}
 }
 
-func (r *KubeClusterReconciler) ControllerName() string {
-	return controllerName
-}
-
 func (r *KubeClusterReconciler) GetAPIGroupVersionKind() schema.GroupVersionKind {
 	return v1alpha1.GroupVersion.WithKind(v1alpha1.KubeClusterKind)
 }
@@ -241,47 +333,105 @@ func (r *KubeClusterReconciler) GetAPIGroupVersion() schema.GroupVersion {
 	return v1alpha1.GroupVersion
 }
 
+// GetPodsForCluster returns the set of pods that this job should manage.
+// It also reconciles ControllerRef by adopting/orphaning.
+// Note that the returned Pods are pointers into the cache.
 func (r *KubeClusterReconciler) GetPodsForCluster(kcluster *v1alpha1.KubeCluster) ([]*corev1.Pod, error) {
-	//TODO implement me
-	panic("implement me")
+	// Create selector.
+	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
+		MatchLabels: utillabels.GenLabels(common.ControllerName, kcluster.GetName()),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("couldn't convert Cluster selector: %v", err)
+	}
+	// List all pods to include those that don't match the selector anymore
+	// but have a ControllerRef pointing to this controller.
+	podlist := &corev1.PodList{}
+	err = r.List(context.Background(), podlist,
+		client.MatchingLabelsSelector{Selector: selector}, client.InNamespace(kcluster.GetNamespace()))
+	if err != nil {
+		return nil, err
+	}
+
+	return common.KubeClusterControlledPodList(podlist.Items, kcluster), nil
 }
 
 func (r *KubeClusterReconciler) GetServicesForCluster(kcluster *v1alpha1.KubeCluster) ([]*corev1.Service, error) {
-	//TODO implement me
-	panic("implement me")
+	// Create selector.
+	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
+		MatchLabels: utillabels.GenLabels(common.ControllerName, kcluster.GetName()),
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("couldn't convert Cluster selector: %v", err)
+	}
+	// List all pods to include those that don't match the selector anymore
+	// but have a ControllerRef pointing to this controller.
+	serviceList := &corev1.ServiceList{}
+	err = r.List(context.Background(), serviceList,
+		client.MatchingLabelsSelector{Selector: selector}, client.InNamespace(kcluster.GetNamespace()))
+	if err != nil {
+		return nil, err
+	}
+
+	ret := common.ConvertServiceList(serviceList.Items)
+	return ret, nil
 }
 
-func (r *KubeClusterReconciler) GetConfigMapsForCluster(kcluster *v1alpha1.KubeCluster) ([]*corev1.ConfigMap, error) {
-	//TODO implement me
-	panic("implement me")
+func (r *KubeClusterReconciler) DeleteCluster(metaObject metav1.Object) error {
+	kubecluster, ok := metaObject.(*v1alpha1.KubeCluster)
+	if !ok {
+		return fmt.Errorf("%+v is not a type of KubeCLustr", metaObject)
+	}
+	if err := r.Delete(context.Background(), kubecluster); err != nil {
+		r.recorder.Eventf(kubecluster, corev1.EventTypeWarning, control.FailedDeletePodReason, "Error deleting: %v", err)
+		logrus.Error(err, "failed to delete job", "namespace", kubecluster.Namespace, "name", kubecluster.Name)
+		return err
+	}
+	r.recorder.Eventf(kubecluster, corev1.EventTypeNormal, control.SuccessfulDeletePodReason, "Deleted job: %v", kubecluster.Name)
+	logrus.Info("job deleted", "namespace", kubecluster.Namespace, "name", kubecluster.Name)
+	commonmetrics.DeletedclustersCounterInc(kubecluster.Namespace, kubecluster.Spec.ClusterType)
+	return nil
 }
 
-func (r *KubeClusterReconciler) DeleteCluster(kcluster metav1.Object) error {
-	//TODO implement me
-	panic("implement me")
+func (r *KubeClusterReconciler) GetSchemaReconciler(clusterType v1alpha1.ClusterType) common.ClusterSchemaReconciler {
+	r.SchemaReconcilerMutux.Lock()
+	defer r.SchemaReconcilerMutux.Unlock()
+	return r.SchemaReconcilerManager[cluster_schema.ClusterSchema(clusterType)]
 }
 
-func (r *KubeClusterReconciler) UpdateClusterStatusInApiServer(kcluster metav1.Object, clusterStatus *v1alpha1.ClusterStatus) error {
-	//TODO implement me
-	panic("implement me")
+func (r *KubeClusterReconciler) FilterServicesForReplicaType(services []*corev1.Service, replicaType string) ([]*corev1.Service, error) {
+	return core.FilterServicesForReplicaType(services, replicaType)
 }
 
-func (r *KubeClusterReconciler) UpdateClusterStatus(kcluster metav1.Object, replicas map[v1alpha1.ReplicaType]*v1alpha1.ReplicaSpec, clusterStatus *v1alpha1.ClusterStatus) error {
-	//TODO implement me
-	panic("implement me")
+// GetServiceSlices returns a slice, which element is the slice of service.
+// Assume the return object is serviceSlices, then serviceSlices[i] is an
+// array of pointers to services corresponding to Services for replica i.
+func (r *KubeClusterReconciler) GetServiceSlices(services []*corev1.Service, replicas int, logger *logrus.Entry) [][]*corev1.Service {
+	return core.GetServiceSlices(services, replicas, logger)
 }
 
-func (r *KubeClusterReconciler) ReconcilePods(kcluster metav1.Object, clusterStatus *v1alpha1.ClusterStatus, pods []*corev1.Pod, rtype v1alpha1.ReplicaType, spec *v1alpha1.ReplicaSpec) error {
-	//TODO implement me
-	panic("implement me")
+func (r *KubeClusterReconciler) GetGroupNameLabelValue() string {
+	return v1alpha1.GroupVersion.Group
 }
 
-func (r *KubeClusterReconciler) ReconcileServices(kcluster metav1.Object, clusterStatus *v1alpha1.ClusterStatus, services []*corev1.Service, rtype v1alpha1.ReplicaType, spec *v1alpha1.ReplicaSpec) error {
-	//TODO implement me
-	panic("implement me")
+func (r *KubeClusterReconciler) GetConfigMapForCluster(kcluster *v1alpha1.KubeCluster) (*corev1.ConfigMap, error) {
+	configMap := &corev1.ConfigMap{}
+	if err := r.Get(context.Background(), client.ObjectKey{Namespace: kcluster.Namespace, Name: kcluster.Name}, configMap); err != nil {
+		r.Log.Info(err.Error(), "unable to fetch configMap for slurmClusterCluster", kcluster.Name)
+		return nil, client.IgnoreNotFound(err)
+	}
+	// If the ConfigMap is not controlled by this SlurmClusterCluster resource, we
+	// should log a warning to the event recorder and return.
+	if !metav1.IsControlledBy(configMap, kcluster) {
+		msg := fmt.Sprintf(MessageResourceExists, configMap.Name, configMap.Kind)
+		r.Recorder.Event(kcluster, corev1.EventTypeWarning, ErrResourceExists, msg)
+		return nil, fmt.Errorf(msg)
+	}
+	return configMap, nil
 }
 
-func (r *KubeClusterReconciler) GetClusterFromInformerCache(namespace, name string) (metav1.Object, error) {
-	//TODO implement me
-	panic("implement me")
+func (r *KubeClusterReconciler) ControllerName() string {
+	return common.ControllerName
 }

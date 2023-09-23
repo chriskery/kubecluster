@@ -12,18 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package common
+package ctrlcommon
 
 import (
 	"fmt"
 	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"sort"
-	"strings"
-
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sort"
 )
 
 // ReplicasPriority is a slice of ReplicaPriority.
@@ -45,11 +43,6 @@ func (p ReplicasPriority) Less(i, j int) bool {
 
 func (p ReplicasPriority) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
-}
-
-func GenGeneralName(jobName string, rtype string, index string) string {
-	n := jobName + "-" + strings.ToLower(rtype) + "-" + index
-	return strings.Replace(n, "/", "-", -1)
 }
 
 // RecheckDeletionTimestamp returns a CanAdopt() function to recheck deletion.
@@ -109,7 +102,7 @@ func CalcPGMinResources(minMember int32, replicas map[v1alpha1.ReplicaType]*v1al
 	var replicasPriority ReplicasPriority
 	for t, replica := range replicas {
 		rp := ReplicaPriority{0, *replica}
-		pc := replica.Template.PriorityClassName
+		pc := replica.Template.Spec.PriorityClassName
 
 		priorityClass, err := pcGetFunc(pc)
 		if err != nil || priorityClass == nil {
@@ -135,7 +128,7 @@ func CalcPGMinResources(minMember int32, replicas map[v1alpha1.ReplicaType]*v1al
 				break
 			}
 			podCnt++
-			for _, c := range task.Template.Containers {
+			for _, c := range task.Template.Spec.Containers {
 				AddResourceList(minAvailableTasksRes, c.Resources.Requests, c.Resources.Limits)
 			}
 		}

@@ -15,6 +15,7 @@
 package util
 
 import (
+	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"strings"
 
 	log "github.com/sirupsen/logrus"
@@ -23,7 +24,7 @@ import (
 	metav1unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func LoggerForReplica(job metav1.Object, rtype string) *log.Entry {
+func LoggerForReplica(job metav1.Object, rtype kubeclusterorgv1alpha1.ReplicaType) *log.Entry {
 	return log.WithFields(log.Fields{
 		// We use job to match the key used in controller.go
 		// Its more common in K8s to use a period to indicate namespace.name. So that's what we use.
@@ -33,7 +34,7 @@ func LoggerForReplica(job metav1.Object, rtype string) *log.Entry {
 	})
 }
 
-func LoggerForJob(job metav1.Object) *log.Entry {
+func LoggerForCluster(job metav1.Object) *log.Entry {
 	return log.WithFields(log.Fields{
 		// We use job to match the key used in controller.go
 		// Its more common in K8s to use a period to indicate namespace.name. So that's what we use.
@@ -71,6 +72,22 @@ func LoggerForService(svc *v1.Service, kind string) *log.Entry {
 		"job":     job,
 		"service": svc.Namespace + "." + svc.Name,
 		"uid":     svc.ObjectMeta.UID,
+	})
+}
+
+func LoggerForConfigMap(cm *v1.ConfigMap, kind string) *log.Entry {
+	kcluster := ""
+	if controllerRef := metav1.GetControllerOf(cm); controllerRef != nil {
+		if controllerRef.Kind == kind {
+			kcluster = cm.Namespace + "." + controllerRef.Name
+		}
+	}
+	return log.WithFields(log.Fields{
+		// We use job to match the key used in controller.go
+		// In controller.go we log the key used with the workqueue.
+		"kcluster":  kcluster,
+		"configMap": cm.Namespace + "." + cm.Name,
+		"uid":       cm.ObjectMeta.UID,
 	})
 }
 

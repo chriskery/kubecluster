@@ -15,6 +15,7 @@
 package common
 
 import (
+	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -73,8 +74,8 @@ func CreatedclustersCounterInc(cluster_namespace, cluster_type string) {
 	clustersRestartedCount.WithLabelValues(cluster_namespace, cluster_type).Inc()
 }
 
-func DeletedclustersCounterInc(cluster_namespace, cluster_type string) {
-	clustersDeletedCount.WithLabelValues(cluster_namespace, cluster_type).Inc()
+func DeletedclustersCounterInc(cluster_namespace string, cluster_type kubeclusterorgv1alpha1.ClusterType) {
+	clustersDeletedCount.WithLabelValues(cluster_namespace, string(cluster_type)).Inc()
 }
 
 func SuccessfulclustersCounterInc(cluster_namespace, cluster_type string) {

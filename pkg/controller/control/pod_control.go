@@ -136,7 +136,12 @@ func GetPodFromTemplate(template *v1.PodTemplateSpec, parentObject runtime.Objec
 	return pod, nil
 }
 
-func (r RealPodControl) createPods(nodeName, namespace string, template *v1.PodTemplateSpec, object runtime.Object, controllerRef *metav1.OwnerReference) error {
+func (r RealPodControl) createPods(
+	nodeName, namespace string,
+	template *v1.PodTemplateSpec,
+	object runtime.Object,
+	controllerRef *metav1.OwnerReference,
+) error {
 	pod, err := GetPodFromTemplate(template, object, controllerRef)
 	if err != nil {
 		return err
@@ -168,7 +173,7 @@ func (r RealPodControl) DeletePod(namespace string, podID string, object runtime
 	if err != nil {
 		return fmt.Errorf("object does not have ObjectMeta, %v", err)
 	}
-	logger := util.LoggerForJob(accessor)
+	logger := util.LoggerForCluster(accessor)
 	pod, err := r.KubeClient.CoreV1().Pods(namespace).Get(context.TODO(), podID, metav1.GetOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {

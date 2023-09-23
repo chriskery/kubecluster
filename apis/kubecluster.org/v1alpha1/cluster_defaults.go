@@ -16,6 +16,7 @@ package v1alpha1
 
 import (
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/pointer"
 )
 
 func addKubeClusterDefaultingFuncs(scheme *runtime.Scheme) error {
@@ -32,8 +33,17 @@ func SetDefaults_KubeCluster(kcluster *KubeCluster) {
 	if kcluster.Spec.RunPolicy.CleanKubeNodePolicy == nil {
 		kcluster.Spec.RunPolicy.CleanKubeNodePolicy = CleanKubeNodePolicyPointer(CleanKubeNodePolicyAll)
 	}
+
+	for _, spec := range kcluster.Spec.ClusterReplicaSpec {
+		setDefaultReplicas(spec, 1)
+	}
 }
 
+func setDefaultReplicas(replicaSpec *ReplicaSpec, replicas int32) {
+	if replicaSpec != nil && replicaSpec.Replicas == nil {
+		replicaSpec.Replicas = pointer.Int32(replicas)
+	}
+}
 func SetDefaults_KubeClusterList(in *KubeClusterList) {
 	for i := range in.Items {
 		a := &in.Items[i]

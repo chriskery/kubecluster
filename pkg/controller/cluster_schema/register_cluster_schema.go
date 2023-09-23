@@ -3,6 +3,9 @@ package cluster_schema
 import (
 	"context"
 	"fmt"
+	"github.com/kubecluster/pkg/common"
+	"github.com/kubecluster/pkg/controller/cluster_schema/slurm_schema"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"strings"
 )
 
@@ -10,11 +13,11 @@ const ErrTemplateSchemeNotSupported = "cluster scheme %s is not supported yet"
 
 type ClusterSchema string
 
-type ClusterSchemaFactory func(ctx context.Context) (ClusterSchemaReconciler, error)
+type ClusterSchemaFactory func(ctx context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error)
 
 var SupportedClusterSchemaReconciler = map[ClusterSchema]ClusterSchemaFactory{
-	SlurmClusterKind: func(ctx context.Context) (ClusterSchemaReconciler, error) {
-		return NewSlurmClusterReconciler(ctx)
+	slurm_schema.ClusterSchemaKind: func(ctx context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
+		return slurm_schema.NewSlurmClusterReconciler(ctx, mgr)
 	},
 }
 
