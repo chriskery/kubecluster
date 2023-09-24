@@ -12,16 +12,8 @@ addUserIfNotExist slurm
 addUserIfNotExist munge
 
 mkdir -p /etc/munge
+chown  munge:munge /etc/munge
 # shellcheck disable=SC2024
-
-chown munge:munge /etc/munge/munge.key
-chmod 400 /etc/munge/munge.key
-mkdir -p /var/lib/munge
-mkdir -p /var/run/munge
-mkdir -p /var/log/munge
-chown -R munge:munge /var/lib/munge
-chown -R munge:munge /var/run/munge
-chown -R munge:munge /var/log/munge
 
 ##cp  relative cmd
 
@@ -51,5 +43,14 @@ echo "$cmddir/slurm/lib/slurm" >> /etc/ld.so.conf.d/slurm-x86_64.conf
 echo "$cmddir/munge/lib" >>  /etc/ld.so.conf.d/munge-x86_64.conf
 
 ldconfig
+
+chown munge:munge /etc/munge/munge.key
+chmod 400 /etc/munge/munge.key
+mkdir -p /var/lib/munge
+mkdir -p /var/run/munge
+mkdir -p /var/log/munge
+chown -R munge:munge /var/lib/munge
+chown -R munge:munge /var/run/munge
+chown -R munge:munge /var/log/munge
 
 echo "configure completed"

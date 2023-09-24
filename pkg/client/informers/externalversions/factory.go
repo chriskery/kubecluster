@@ -208,7 +208,7 @@ func (f *sharedInformerFactory) InformerFor(obj runtime.Object, newFunc internal
 //	    }
 //	}
 //
-//	// Creating informers can also be created after Start, but then
+//	// Activating informers can also be created after Start, but then
 //	// Start must be called again:
 //	anotherGenericInformer := factory.ForResource(resource)
 //	factory.Start(ctx.Done())

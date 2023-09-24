@@ -1,0 +1,54 @@
+apiVersion: kubecluster.org/v1alpha1
+kind: KubeCluster
+metadata:
+  labels:
+    app.kubernetes.io/part-of: kubecluster
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: kubecluster
+  name: centos-sample
+spec:
+  clusterType: slurm
+  clusterReplicaSpec:
+    Controller:
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - name: kubenode
+              image: centos
+              command: ['sh', '-c', 'echo "Hello, Kubernetes!" && sleep 36000']
+              # Comment out the below resources to use the CPU.
+              resources:
+                limits:
+                  memory: 2Gi
+                  cpu: 2
+                requests:
+                  memory: 2Gi
+                  cpu: 2
+              volumeMounts:
+                - mountPath: /opt/slurm
+                  name: slurm-opt
+          volumes:
+            - emptyDir: {}
+              name: slurm-opt
+    Cpu:
+      replicas: 1
+      template:
+        spec:
+          containers:
+            - name: kubenode
+#              image: registry.cn-hangzhou.aliyuncs.com/eflops/slurm-dev:sysbench
+              image: centos
+              resources:
+                limits:
+                  memory: 2Gi
+                  cpu: 2
+                requests:
+                  memory: 2Gi
+                  cpu: 2
+              volumeMounts:
+                - mountPath: /opt/slurm
+                  name: slurm-opt
+          volumes:
+            - emptyDir: { }
+              name: slurm-opt

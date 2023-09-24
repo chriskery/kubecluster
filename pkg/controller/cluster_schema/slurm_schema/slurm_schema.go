@@ -6,7 +6,8 @@ import (
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"github.com/kubecluster/pkg/common"
 	"github.com/kubecluster/pkg/controller/expectation"
-	v1 "k8s.io/api/core/v1"
+	"github.com/kubecluster/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/record"
@@ -65,8 +66,80 @@ func (s *slurmClusterSchemaReconciler) setSlurmPorts(kcluster *kubeclusterorgv1a
 	}
 }
 
-func (s *slurmClusterSchemaReconciler) UpdateClusterStatus(kcluster metav1.Object, replicas map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec, clusterStatus *kubeclusterorgv1alpha1.ClusterStatus) error {
-	return nil
+func (s *slurmClusterSchemaReconciler) UpdateClusterStatus(
+	kcluster *kubeclusterorgv1alpha1.KubeCluster,
+	clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
+	rtype kubeclusterorgv1alpha1.ReplicaType,
+	spec *kubeclusterorgv1alpha1.ReplicaSpec,
+) {
+
+	status := clusterStatus.ReplicaStatuses[rtype]
+	// Generate the label selector.
+	//status.Selector = metav1.FormatLabelSelector(r.GenLabelSelector(pytorchjob.Name, rtype))
+
+	specReplicas := *spec.Replicas
+	running := status.Active
+	failed := status.Failed
+	expected := specReplicas - running
+
+	if rtype == SchemaReplicaTypeController {
+		var msg string
+		if expected == 0 {
+			msg = fmt.Sprintf("KubeCLuster %s is running.", kcluster.GetName())
+		} else if running > 0 {
+			msg = fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
+		}
+		if len(msg) != 0 {
+			util.UpdateClusterConditions(
+				clusterStatus,
+				kubeclusterorgv1alpha1.ClusterRunning,
+				corev1.ConditionTrue,
+				util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterRunningReason),
+				msg,
+			)
+		}
+	}
+
+	if failed > 0 {
+		// For the situation that jobStatus has a restarting condition, and append a running condition,
+		// the restarting condition will be removed from jobStatus by kubeflowv1.filterOutCondition(),
+		// so we need to record the existing restarting condition for later use.
+		var existingRestartingCondition *kubeclusterorgv1alpha1.ClusterCondition
+		for _, condition := range clusterStatus.Conditions {
+			if condition.Type == kubeclusterorgv1alpha1.ClusterRestarting {
+				existingRestartingCondition = &kubeclusterorgv1alpha1.ClusterCondition{
+					Reason:  condition.Reason,
+					Message: condition.Message,
+				}
+			}
+		}
+
+		// For the situation that jobStatus has a restarting condition, and appends a new running condition,
+		// the restarting condition will be removed from jobStatus by kubeflowv1.filterOutCondition(),
+		// so we need to append the restarting condition back to jobStatus.
+		if existingRestartingCondition != nil {
+			util.UpdateClusterConditions(clusterStatus, kubeclusterorgv1alpha1.ClusterRestarting, corev1.ConditionTrue, existingRestartingCondition.Reason, existingRestartingCondition.Message)
+			// job is restarting, no need to set it failed
+			// we know it because we update the status condition when reconciling the replicas
+			common.RestartedClustersCounterInc(kcluster.GetNamespace(), kcluster.Spec.ClusterType)
+		} else {
+			if rtype != SchemaReplicaTypeController || running != 0 {
+				util.LoggerForCluster(kcluster).Infof("KubeCLuster %s/%s continues regardless %d  %s replica(s) failed .",
+					kcluster.Namespace, kcluster.Name, failed, rtype)
+				return
+			}
+			msg := fmt.Sprintf("KubeCLuster %s/%s has failed because %d %s replica(s) failed.",
+				kcluster.Namespace, kcluster.Name, failed, rtype)
+			s.Recorder.Event(kcluster, corev1.EventTypeNormal, util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterFailedReason), msg)
+			if clusterStatus.CompletionTime == nil {
+				now := metav1.Now()
+				clusterStatus.CompletionTime = &now
+			}
+			util.UpdateClusterConditions(clusterStatus, kubeclusterorgv1alpha1.ClusterFailed, corev1.ConditionTrue, util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterFailedReason), msg)
+			common.FailedClustersCounterInc(kcluster.Namespace, kcluster.Spec.ClusterType)
+		}
+	}
+	return
 }
 
 func (s *slurmClusterSchemaReconciler) IsController(
@@ -78,10 +151,10 @@ func (s *slurmClusterSchemaReconciler) IsController(
 
 func (s *slurmClusterSchemaReconciler) SetClusterSpec(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
-	podTemplate *v1.PodTemplateSpec,
+	podTemplate *corev1.PodTemplateSpec,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
 	index string,
-	configMap *v1.ConfigMap,
+	configMap *corev1.ConfigMap,
 ) error {
 	slurmConf := configMap.Data[slurmConfKey]
 	slurmctlPort, slurmdPort, err := getSlurmPortsFromConf(slurmConf)

@@ -44,7 +44,7 @@ type ReplicaStatus struct {
 	Active int32 `json:"active,omitempty"`
 
 	// The number of pods which reached phase Succeeded.
-	Creating int32 `json:"creating,omitempty"`
+	Activating int32 `json:"activating,omitempty"`
 
 	// The number of pods which reached phase Succeeded.
 	Failed int32 `json:"failed,omitempty"`

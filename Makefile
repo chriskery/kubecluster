@@ -161,9 +161,3 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
-
-sample:
-	kubectl apply -f config/samples/kubecluster.org_v1alpha1_cluster.yaml
-
-delete:
-	kubectl delete -f config/samples/kubecluster.org_v1alpha1_cluster.yaml

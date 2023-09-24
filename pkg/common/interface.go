@@ -41,7 +41,11 @@ type ControllerInterface interface {
 	UpdateClusterStatusInApiServer(kcluster metav1.Object, clusterStatus *kubeclusterorgv1alpha1.ClusterStatus) error
 
 	// UpdateClusterStatus updates the job status and job conditions
-	UpdateClusterStatus(kcluster metav1.Object, replicas map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec, clusterStatus *kubeclusterorgv1alpha1.ClusterStatus) error
+	UpdateClusterStatus(
+		kcluster *kubeclusterorgv1alpha1.KubeCluster,
+		replicas map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
+		clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
+	) error
 
 	FilterServicesForReplicaType(services []*v1.Service, rt string) ([]*v1.Service, error)
 
