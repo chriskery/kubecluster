@@ -119,14 +119,13 @@ func setInitContainer(
 		return err
 	}
 
-	cpSlurmCmdComand := fmt.Sprintf("if [ -d %s ] && [ -d %s ];then cp -r %s/* %s;fi", SlurmCmdDir, EmptyVolumeMountPathInInitContainer, SlurmCmdDir, EmptyVolumeMountPathInInitContainer)
+	waitReadyCommand := fmt.Sprintf("while [ \"$(cat %s)\" != \"%s\" ]; do echo \"slurm.conf not ready\"; sleep 5; done && echo \"slurm.conf ready\"",
+		fmt.Sprintf("%s/%s", SlurmConfDir, slurmConfKey), configMapReady)
+	cpSlurmCmdCommand := fmt.Sprintf("if [ -d %s ] && [ -d %s ];then cp -r %s/* %s;fi", SlurmCmdDir, EmptyVolumeMountPathInInitContainer, SlurmCmdDir, EmptyVolumeMountPathInInitContainer)
 	if rtype == SchemaReplicaTypeController {
-		if index == "0" {
-			cpSlurmCmdComand = fmt.Sprintf("%s && %s", genMungeKeyCmd(), cpSlurmCmdComand)
-		}
-		initContainers[0].Command = []string{"sh", "-c", cpSlurmCmdComand}
+		initContainers[0].Command = []string{"sh", "-c", strings.Join([]string{waitReadyCommand, cpSlurmCmdCommand}, " && ")}
 	} else {
-		initContainers[0].Command = []string{"sh", "-c", fmt.Sprintf("%s && %s", cpSlurmCmdComand, strings.Join(initContainers[0].Command, " "))}
+		initContainers[0].Command = []string{"sh", "-c", strings.Join([]string{waitReadyCommand, strings.Join(initContainers[0].Command, " ")}, " && ")}
 	}
 
 	//we only need to change tha last

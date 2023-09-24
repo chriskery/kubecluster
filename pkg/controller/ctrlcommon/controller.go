@@ -96,15 +96,6 @@ func (c *ClusterControllerConfiguration) EnableGangScheduling() bool {
 // ClusterController abstracts other operators to manage the lifecycle of Clusters.
 // User need to first implement the ControllerInterface(objectA) and then initialize a ClusterController(objectB) struct with objectA
 // as the parameter.
-// And then call objectB.ReconcileClusters as mentioned below, the ReconcileClusters method is the entrypoint to trigger the
-// reconcile logic of the KubeCluster controller
-//
-// ReconcileClusters(
-//
-//	KubeCluster interface{},
-//	replicas map[apiv1.ReplicaType]*apiv1.ReplicaSpec,
-//	ClusterStatus apiv1.ClusterStatus,
-//	runPolicy *apiv1.RunPolicy) error
 type ClusterController struct {
 	Controller common.ControllerInterface
 
@@ -291,7 +282,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 		}
 		for rType := range kcluster.Status.ReplicaStatuses {
 			kcluster.Status.ReplicaStatuses[rType].Active = 0
-			kcluster.Status.ReplicaStatuses[rType].Creating = 0
+			kcluster.Status.ReplicaStatuses[rType].Activating = 0
 		}
 		msg := fmt.Sprintf("%s %s is suspended.", clusterKind, clusterName)
 		if util.IsRunning(kcluster.Status) {
@@ -488,7 +479,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 		}
 	}
 
-	err = schemaReconciler.UpdateClusterStatus(metaObject, kcluster.Spec.ClusterReplicaSpec, &kcluster.Status)
+	err = cc.Controller.UpdateClusterStatus(kcluster, kcluster.Spec.ClusterReplicaSpec, &kcluster.Status)
 	if err != nil {
 		log.Warnf("UpdateClusterStatus error %v", err)
 		return err

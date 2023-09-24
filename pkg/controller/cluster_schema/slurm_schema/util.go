@@ -180,12 +180,12 @@ func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, c
 		},
 	})
 	for i := range template.Spec.InitContainers {
-		//template.Spec.InitContainers[i].VolumeMounts = append(template.Spec.InitContainers[i].VolumeMounts, corev1.VolumeMount{
-		//	Name:      configMapName,
-		//	MountPath: fmt.Sprintf("%s/%s", SlurmConfDir, slurmConfKey),
-		//	SubPath:   slurmConfKey,
-		//	ReadOnly:  false,
-		//})
+		template.Spec.InitContainers[i].VolumeMounts = append(template.Spec.InitContainers[i].VolumeMounts, corev1.VolumeMount{
+			Name:      configMapName,
+			MountPath: fmt.Sprintf("%s/%s", SlurmConfDir, slurmConfKey),
+			SubPath:   slurmConfKey,
+			ReadOnly:  true,
+		})
 		template.Spec.InitContainers[i].VolumeMounts = append(template.Spec.InitContainers[i].VolumeMounts, corev1.VolumeMount{
 			Name:      EmptyVolume,
 			MountPath: EmptyVolumeMountPathInInitContainer,
@@ -205,7 +205,12 @@ func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, c
 			Name:      configMapName,
 			MountPath: fmt.Sprintf("%s/%s", SlurmConfDir, slurmConfKey),
 			SubPath:   slurmConfKey,
-			ReadOnly:  false,
+			ReadOnly:  true,
+		})
+		template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+			Name:      configMapName,
+			MountPath: fmt.Sprintf("%s/munge/munge/%s", SlurmConfDir, mungeKey),
+			SubPath:   mungeKey,
 		})
 	}
 
@@ -239,10 +244,6 @@ func setCmd(podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName string
 			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", fmt.Sprintf("%s && %s ", configureCmd, genWorkerCommand())}
 		}
 	}
-}
-
-func genMungeKeyCmd() string {
-	return fmt.Sprintf("if [ -d %s/munge ];then dd if=/dev/urandom bs=1 count=1024 > %s ;fi", MungeDir, MungeDir+"/munge/munge.key")
 }
 
 func genControllerCommand() string {

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"github.com/kubecluster/pkg/common"
+	"github.com/kubecluster/pkg/util"
 	utillabels "github.com/kubecluster/pkg/util/labels"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -90,7 +91,9 @@ func (s *slurmClusterSchemaReconciler) ReconcileConfigMap(kcluster *kubeclustero
 	if configMap.Data == nil {
 		configMap.Data = make(map[string]string)
 	}
-
+	if configMap.BinaryData == nil {
+		configMap.BinaryData = make(map[string][]byte)
+	}
 	slurmctlPort, slurmdPort, err := getSlurmPortsFromSpec(kcluster, s.GetDefaultContainerName())
 	if err != nil {
 		slurmctlPort, slurmdPort = genSlurmRandomPort()
@@ -111,8 +114,12 @@ func (s *slurmClusterSchemaReconciler) ReconcileConfigMap(kcluster *kubeclustero
 		configMap.Data[configMapReadyKey] = "false"
 		configMap.Data[hostNetWorkNodesListKey] = strings.Join(hostNetWorkNodeList, ",")
 	}
-
+	configMap.BinaryData[mungeKey] = genMungeKey()
 	return nil
+}
+
+func genMungeKey() []byte {
+	return []byte(util.RandStr(mungeKeylenInInt))
 }
 
 func (s *slurmClusterSchemaReconciler) needReconcileConfigMap(configMap *corev1.ConfigMap) bool {
@@ -205,19 +212,22 @@ func (s *slurmClusterSchemaReconciler) createSlurmConf(
 
 const (
 	slurmConfKey            = "slurm.conf"
+	mungeKey                = "munge.key"
+	mungeKeylenInInt        = 1024
 	configMapReadyKey       = "ready"
+	configMapReady          = "true"
 	hostNetWorkNodesListKey = "hostNetWorkNodesList"
 )
 
 func (s *slurmClusterSchemaReconciler) UpdateConfigMap(kcluster *kubeclusterorgv1alpha1.KubeCluster, configMap *corev1.ConfigMap) error {
 	cmReady, exist := configMap.Data[configMapReadyKey]
-	if exist || cmReady == "true" {
+	if exist || cmReady == configMapReady {
 		return nil
 	}
 
 	hostNetWorkNodesList := configMap.Data[hostNetWorkNodesListKey]
 	if len(hostNetWorkNodesList) == 0 {
-		configMap.Data[configMapReadyKey] = "true"
+		configMap.Data[configMapReadyKey] = configMapReady
 		return nil
 	}
 
@@ -273,10 +283,10 @@ func (s *slurmClusterSchemaReconciler) UpdateConfigMap(kcluster *kubeclusterorgv
 	configMap.Data[slurmConfKey] = slurmConf
 	if hostNetWorkNodesListSet.Len() == 0 {
 		configMap.Data[hostNetWorkNodesListKey] = ""
-		configMap.Data[configMapReadyKey] = "true"
+		configMap.Data[configMapReadyKey] = configMapReady
 	} else {
 		configMap.Data[hostNetWorkNodesListKey] = strings.Join(hostNetWorkNodesListSet.UnsortedList(), ",")
-		configMap.Data[configMapReadyKey] = "false"
+		configMap.Data[configMapReadyKey] = configMapReady
 	}
 	return nil
 }

@@ -137,7 +137,7 @@ func setupController(mgr ctrl.Manager, enabledSchemes cluster_schema.EnabledSche
 
 	reconciler := controller.NewReconciler(mgr, gangSchedulingSetupFunc)
 
-	// TODO: We need a general manager. all rest util addsToManager
+	// TODO: We need a general manager. all rest ctrlutil addsToManager
 	// Based on the user configuration, we start different controllers
 	if enabledSchemes.Empty() {
 		enabledSchemes.FillAll()

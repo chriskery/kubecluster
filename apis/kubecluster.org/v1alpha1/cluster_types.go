@@ -81,6 +81,11 @@ type ClusterStatus struct {
 	// be set in happens-before order across separate operations.
 	// It is represented in RFC3339 form and is in UTC.
 	LastReconcileTime *metav1.Time `json:"lastReconcileTime,omitempty"`
+
+	// Represents time when the job was completed. It is not guaranteed to
+	// be set in happens-before order across separate operations.
+	// It is represented in RFC3339 form and is in UTC.
+	CompletionTime *metav1.Time `json:"completionTime,omitempty"`
 }
 
 // +genclient

@@ -61,16 +61,16 @@ func init() {
 		clustersRestartedCount)
 }
 
-func CreatedClustersCounterInc(clusterNamespace, clusterType string) {
-	clustersCreatedCount.WithLabelValues(clusterNamespace, clusterType).Inc()
+func CreatedClustersCounterInc(clusterNamespace string, clusterType kubeclusterorgv1alpha1.ClusterType) {
+	clustersCreatedCount.WithLabelValues(clusterNamespace, string(clusterType)).Inc()
 }
 
-func DeletedClustersCounterInc(clusterNamespace, clusterType string) {
-	clustersDeletedCount.WithLabelValues(clusterNamespace, clusterType).Inc()
+func DeletedClustersCounterInc(clusterNamespace string, clusterType kubeclusterorgv1alpha1.ClusterType) {
+	clustersDeletedCount.WithLabelValues(clusterNamespace, string(clusterType)).Inc()
 }
 
-func FailedClustersCounterInc(clusterNamespace, clusterType string) {
-	clustersFailedCount.WithLabelValues(clusterNamespace, clusterType).Inc()
+func FailedClustersCounterInc(clusterNamespace string, clusterType kubeclusterorgv1alpha1.ClusterType) {
+	clustersFailedCount.WithLabelValues(clusterNamespace, string(clusterType)).Inc()
 }
 
 func RestartedClustersCounterInc(clusterNamespace string, clusterType kubeclusterorgv1alpha1.ClusterType) {
