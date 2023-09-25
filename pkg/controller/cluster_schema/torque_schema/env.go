@@ -24,7 +24,6 @@ import (
 const (
 	// EnvControllerAddress is the environment variable name for the rank of nodes.
 	EnvControllerAddress = "PBS_SERVER_ADDRESS"
-	EnvPBSHome           = "PBS_HOME"
 )
 
 // EnvVarGenerator is the environment variable generator interface.
@@ -54,10 +53,7 @@ func setPodEnv(slurmSchemaCluster *kubeclusterorgv1alpha1.KubeCluster, podTempla
 			},
 		},
 	})
-	env = append(env, corev1.EnvVar{
-		Name:  EnvPBSHome,
-		Value: PBSConf,
-	})
+
 	for i := range podTemplateSpec.Spec.InitContainers {
 		if podTemplateSpec.Spec.InitContainers[i].Env == nil {
 			podTemplateSpec.Spec.InitContainers[i].Env = make([]corev1.EnvVar, 0)

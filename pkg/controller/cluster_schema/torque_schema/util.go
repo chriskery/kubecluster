@@ -3,9 +3,7 @@ package torque_schema
 import (
 	"fmt"
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/common"
 	corev1 "k8s.io/api/core/v1"
-	"strconv"
 	"strings"
 )
 
@@ -13,7 +11,7 @@ func setPodNetwork(template *corev1.PodTemplateSpec) {
 	template.Spec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 }
 
-func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, configMapName string) {
+func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, rtype kubeclusterorgv1alpha1.ReplicaType, configMapName string) {
 	defaultConfigMapMode := int32(0777)
 	template.Spec.Volumes = append(template.Spec.Volumes, corev1.Volume{
 		Name: configMapName,
@@ -31,16 +29,32 @@ func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, c
 		if template.Spec.Containers[i].Name != defaultContainerName {
 			continue
 		}
+		if rtype == SchemaReplicaTypeServer {
+			template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+				Name:      configMapName,
+				MountPath: PBSConf,
+				SubPath:   PBSServerConfKey,
+				ReadOnly:  false,
+			})
+			template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+				Name:      configMapName,
+				MountPath: ServerEntryPointMountPath,
+				SubPath:   ServerEntrypoint,
+				ReadOnly:  false,
+			})
+		} else {
+			template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+				Name:      configMapName,
+				MountPath: PBSConf,
+				SubPath:   PBSWorkerConfKey,
+				ReadOnly:  false,
+			})
+		}
+
 		template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
 			Name:      configMapName,
-			MountPath: PBSConf,
-			SubPath:   PBSConfKey,
-			ReadOnly:  false,
-		})
-		template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
-			Name:      configMapName,
-			MountPath: PBCMonPrivConfig,
-			SubPath:   PBCMonPrivConfigKey,
+			MountPath: PBSMonPrivMountPath,
+			SubPath:   PBSMomConfigKey,
 			ReadOnly:  true,
 		})
 	}
@@ -60,7 +74,7 @@ func setSecurity(podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName s
 	}
 }
 
-func setCmd(kcluster *kubeclusterorgv1alpha1.KubeCluster, podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName string, rtype kubeclusterorgv1alpha1.ReplicaType) {
+func setCmd(_ *kubeclusterorgv1alpha1.KubeCluster, podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName string, rtype kubeclusterorgv1alpha1.ReplicaType) {
 	for i := range podTemplateSpec.Spec.Containers {
 		if podTemplateSpec.Spec.Containers[i].Name != defaultContainerName {
 			continue
@@ -69,38 +83,34 @@ func setCmd(kcluster *kubeclusterorgv1alpha1.KubeCluster, podTemplateSpec *corev
 			podTemplateSpec.Spec.Containers[i].Command = make([]string, 0)
 		}
 		if rtype == SchemaReplicaTypeServer {
-			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", genServerCommand(kcluster)}
+			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", genServerCommand()}
 		} else {
 			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", genWorkerCommand()}
 		}
 	}
 }
 
-func genServerCommand(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
+func genServerCommand() string {
 	cmds := getGeneralCommand()
-	for replicaType, spec := range kcluster.Spec.ClusterReplicaSpec {
-		//if replicaType == SchemaReplicaTypeServer {
-		//	continue
-		//}
-		totalReplica := *spec.Replicas
-		for i := 0; i < int(totalReplica); i++ {
-			cmds = append(cmds, fmt.Sprintf("%s/qmgr -c \"create node %s\"", PBSBin, common.GenGeneralName(kcluster.GetName(), replicaType, strconv.Itoa(i))))
-		}
-	}
+	cmds = append(cmds, "sleep 20")
+	cmds = append(cmds, fmt.Sprintf("sh %s", ServerEntryPointMountPath))
 	return strings.Join(cmds, " && ")
 }
 
 func genWorkerCommand() string {
 	cmds := getGeneralCommand()
+	cmds = append(cmds, "sleep infinity")
 	return strings.Join(cmds, " && ")
 }
 
 func getGeneralCommand() []string {
-	chmodCmd := fmt.Sprintf("chmod +x %s ", PBSSH)
-	pbsStartCmd := fmt.Sprintf("%s start ", PBSSH)
+	cpMomConfigCmd := fmt.Sprintf("cp %s %s", PBSMonPrivMountPath, PBSMonPrivConfig)
+	pbsSSHStartCmd := fmt.Sprintf("chmod +x %s && %s start ", PBSSH, PBSSH)
+	pbsStartCmd := fmt.Sprintf("%s start ", PBSCmd)
+
 	var cmds []string
-	cmds = append(cmds, chmodCmd)
+	cmds = append(cmds, cpMomConfigCmd)
+	cmds = append(cmds, pbsSSHStartCmd)
 	cmds = append(cmds, pbsStartCmd)
-	cmds = append(cmds, "sleep 1000")
 	return cmds
 }

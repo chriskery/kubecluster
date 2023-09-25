@@ -17,9 +17,11 @@ const (
 	ClusterSchemaKind = "torque"
 
 	PBSSH  = "/etc/profile.d/pbs.sh"
-	PBCCmd = "/etc/init.d/pbs"
+	PBSCmd = "/etc/init.d/pbs"
 
-	PBSBin                                                     = "/opt/pbs/bin"
+	PBSExec = "/opt/pbs"
+	PBSBin  = PBSExec + "/bin"
+
 	SchemaReplicaTypeServer kubeclusterorgv1alpha1.ReplicaType = "Server"
 )
 
@@ -37,18 +39,25 @@ type TorqueClusterSchemaReconciler struct {
 	Recorder record.EventRecorder
 }
 
-func (s *TorqueClusterSchemaReconciler) Default(kcluster *kubeclusterorgv1alpha1.KubeCluster) {
+func (t *TorqueClusterSchemaReconciler) Default(kcluster *kubeclusterorgv1alpha1.KubeCluster) {
 	// Update the key of Controller replica to camel case.
 	kubeclusterorgv1alpha1.SetTypeNameToCamelCase(kcluster.Spec.ClusterReplicaSpec, SchemaReplicaTypeServer)
 	for _, spec := range kcluster.Spec.ClusterReplicaSpec {
-		index := kubeclusterorgv1alpha1.GetDefaultContainerIndex(&spec.Template.Spec, s.GetDefaultContainerName())
-		if ok := kubeclusterorgv1alpha1.HasDefaultPort(&spec.Template.Spec, index, "ssh"); !ok {
-			kubeclusterorgv1alpha1.SetDefaultPort(&spec.Template.Spec, "ssh", int32(22), index)
+		index := kubeclusterorgv1alpha1.GetDefaultContainerIndex(&spec.Template.Spec, t.GetDefaultContainerName())
+		if ok := kubeclusterorgv1alpha1.HasDefaultPort(&spec.Template.Spec, index, "serve-port"); !ok {
+			kubeclusterorgv1alpha1.SetDefaultPort(&spec.Template.Spec, "serve-port", int32(15001), index)
+		}
+		if ok := kubeclusterorgv1alpha1.HasDefaultPort(&spec.Template.Spec, index, "comm-port"); !ok {
+			kubeclusterorgv1alpha1.SetDefaultPort(&spec.Template.Spec, "comm-port", int32(17001), index)
+		}
+		if ok := kubeclusterorgv1alpha1.HasDefaultPort(&spec.Template.Spec, index, "sched-port"); !ok {
+			kubeclusterorgv1alpha1.SetDefaultPort(&spec.Template.Spec, "sched-port", int32(15004), index)
 		}
 	}
+
 }
 
-func (s *TorqueClusterSchemaReconciler) UpdateClusterStatus(
+func (t *TorqueClusterSchemaReconciler) UpdateClusterStatus(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
@@ -65,9 +74,9 @@ func (s *TorqueClusterSchemaReconciler) UpdateClusterStatus(
 	if rtype == SchemaReplicaTypeServer {
 		var msg string
 		if running == 0 && failed == 0 {
-			msg = fmt.Sprintf("KubeCLuster %s is running.", kcluster.GetName())
+			msg = fmt.Sprintf("KubeCLuster %t is running.", kcluster.GetName())
 		} else if running > 0 {
-			msg = fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
+			msg = fmt.Sprintf("KubeCLuster %t is avtivating.", kcluster.GetName())
 		}
 		if len(msg) != 0 {
 			util.UpdateClusterConditions(
@@ -104,13 +113,13 @@ func (s *TorqueClusterSchemaReconciler) UpdateClusterStatus(
 			common.RestartedClustersCounterInc(kcluster.GetNamespace(), kcluster.Spec.ClusterType)
 		} else {
 			if rtype != SchemaReplicaTypeServer {
-				util.LoggerForCluster(kcluster).Infof("KubeCLuster %s/%s continues regardless %d  %s replica(s) failed .",
+				util.LoggerForCluster(kcluster).Infof("KubeCLuster %t/%t continues regardless %d  %t replica(t) failed .",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
 
 			} else {
-				msg := fmt.Sprintf("KubeCLuster %s/%s has failed because %d %s replica(s) failed.",
+				msg := fmt.Sprintf("KubeCLuster %t/%t has failed because %d %t replica(t) failed.",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
-				s.Recorder.Event(kcluster, corev1.EventTypeNormal, util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterFailedReason), msg)
+				t.Recorder.Event(kcluster, corev1.EventTypeNormal, util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterFailedReason), msg)
 				if clusterStatus.CompletionTime == nil {
 					now := metav1.Now()
 					clusterStatus.CompletionTime = &now
@@ -123,14 +132,14 @@ func (s *TorqueClusterSchemaReconciler) UpdateClusterStatus(
 	return
 }
 
-func (s *TorqueClusterSchemaReconciler) IsController(
+func (t *TorqueClusterSchemaReconciler) IsController(
 	spec map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
 	rType kubeclusterorgv1alpha1.ReplicaType,
 	index int) bool {
 	return (SchemaReplicaTypeServer) == (rType)
 }
 
-func (s *TorqueClusterSchemaReconciler) SetClusterSpec(
+func (t *TorqueClusterSchemaReconciler) SetClusterSpec(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	podTemplate *corev1.PodTemplateSpec,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
@@ -138,26 +147,33 @@ func (s *TorqueClusterSchemaReconciler) SetClusterSpec(
 	configMap *corev1.ConfigMap,
 ) error {
 
-	if err := setPodEnv(kcluster, podTemplate, s.GetDefaultContainerName(), rtype, index); err != nil {
+	if err := setPodEnv(kcluster, podTemplate, t.GetDefaultContainerName(), rtype, index); err != nil {
 		return err
 	}
 
-	setVolumes(podTemplate, s.GetDefaultContainerName(), configMap.Name)
+	if err := setInitContainer(kcluster, podTemplate, rtype); err != nil {
+		return err
+	}
+	setVolumes(podTemplate, t.GetDefaultContainerName(), rtype, configMap.Name)
 	setPodNetwork(podTemplate)
-	setCmd(kcluster, podTemplate, s.GetDefaultContainerName(), rtype)
-	setSecurity(podTemplate, s.GetDefaultContainerName(), rtype)
+	setCmd(kcluster, podTemplate, t.GetDefaultContainerName(), rtype)
+	setSecurity(podTemplate, t.GetDefaultContainerName(), rtype)
 	return nil
 }
 
-func (s *TorqueClusterSchemaReconciler) GetDefaultContainerName() string {
+func (t *TorqueClusterSchemaReconciler) GetDefaultContainerName() string {
 	return kubeclusterorgv1alpha1.ClusterDefaultContainerName
 }
 
-func (s *TorqueClusterSchemaReconciler) ValidateV1KubeCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) error {
-	for replicaType, _ := range kcluster.Spec.ClusterReplicaSpec {
-		if SchemaReplicaTypeServer == replicaType {
-			return nil
+func (t *TorqueClusterSchemaReconciler) ValidateV1KubeCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) error {
+	for replicaType, spec := range kcluster.Spec.ClusterReplicaSpec {
+		if SchemaReplicaTypeServer != replicaType {
+			continue
 		}
+		if *spec.Replicas != 1 {
+			return fmt.Errorf("torque clusetr server replica must be 1")
+		}
+		return nil
 	}
-	return fmt.Errorf("torque cluster need a replica named %s", SchemaReplicaTypeServer)
+	return fmt.Errorf("torque cluster need a replica named %v", SchemaReplicaTypeServer)
 }
