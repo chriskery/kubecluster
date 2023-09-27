@@ -235,8 +235,8 @@ func setCmd(podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName string
 		if podTemplateSpec.Spec.Containers[i].Name != defaultContainerName {
 			continue
 		}
-		if podTemplateSpec.Spec.Containers[i].Env == nil {
-			podTemplateSpec.Spec.Containers[i].Env = make([]corev1.EnvVar, 0)
+		if podTemplateSpec.Spec.Containers[i].Command == nil {
+			podTemplateSpec.Spec.Containers[i].Command = make([]string, 0)
 		}
 		if rtype == SchemaReplicaTypeController {
 			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", fmt.Sprintf("%s && sleep 30 && %s ", configureCmd, genControllerCommand())}

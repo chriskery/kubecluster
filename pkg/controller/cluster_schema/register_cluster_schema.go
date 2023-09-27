@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/kubecluster/pkg/common"
 	"github.com/kubecluster/pkg/controller/cluster_schema/slurm_schema"
+	"github.com/kubecluster/pkg/controller/cluster_schema/torque_schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"strings"
 )
@@ -18,6 +19,9 @@ type ClusterSchemaFactory func(ctx context.Context, mgr ctrl.Manager) (common.Cl
 var SupportedClusterSchemaReconciler = map[ClusterSchema]ClusterSchemaFactory{
 	slurm_schema.ClusterSchemaKind: func(ctx context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
 		return slurm_schema.NewSlurmClusterReconciler(ctx, mgr)
+	},
+	torque_schema.ClusterSchemaKind: func(ctx context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
+		return torque_schema.NewTorqueClusterReconciler(ctx, mgr)
 	},
 }
 
