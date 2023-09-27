@@ -5,7 +5,7 @@ metadata:
     app.kubernetes.io/part-of: kubecluster
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: kubecluster
-  name: torque-sample
+  name: torque-pbspro-sample
 spec:
   clusterType: torque
   clusterReplicaSpec:

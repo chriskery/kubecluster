@@ -22,6 +22,15 @@ const (
 	PBSExec = "/opt/pbs"
 	PBSBin  = PBSExec + "/bin"
 
+	PBSInitShell = "/opt/pbs/init.sh"
+
+	EmptyVolume                         = "pbs-opt-dir"
+	EmptyVolumeMountPathInInitContainer = "/mnt/share"
+	EmptyVolumeMountPathInMainContainer = "/mnt/share"
+
+	PBSProDir   = "/opt/pbs"
+	PostGresDir = "/opt/postgres"
+
 	SchemaReplicaTypeServer kubeclusterorgv1alpha1.ReplicaType = "Server"
 )
 

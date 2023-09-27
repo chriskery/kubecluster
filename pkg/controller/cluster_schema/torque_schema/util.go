@@ -24,6 +24,20 @@ func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, r
 			},
 		},
 	})
+	template.Spec.Volumes = append(template.Spec.Volumes, corev1.Volume{
+		Name: EmptyVolume,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
+		},
+	})
+
+	for i := range template.Spec.InitContainers {
+		template.Spec.InitContainers[i].VolumeMounts = append(template.Spec.InitContainers[i].VolumeMounts, corev1.VolumeMount{
+			Name:      EmptyVolume,
+			MountPath: EmptyVolumeMountPathInInitContainer,
+			ReadOnly:  false,
+		})
+	}
 
 	for i := range template.Spec.Containers {
 		if template.Spec.Containers[i].Name != defaultContainerName {
@@ -55,6 +69,11 @@ func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, r
 			Name:      configMapName,
 			MountPath: PBSMonPrivMountPath,
 			SubPath:   PBSMomConfigKey,
+			ReadOnly:  true,
+		})
+		template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+			Name:      EmptyVolume,
+			MountPath: EmptyVolumeMountPathInMainContainer,
 			ReadOnly:  true,
 		})
 	}
@@ -91,10 +110,12 @@ func setCmd(_ *kubeclusterorgv1alpha1.KubeCluster, podTemplateSpec *corev1.PodTe
 }
 
 func genServerCommand() string {
+	serverCmds := make([]string, 0)
+	serverCmds = append(serverCmds, "rm -rf /var/spool/pbs")
 	cmds := getGeneralCommand()
-	cmds = append(cmds, "sleep 20")
-	cmds = append(cmds, fmt.Sprintf("sh %s", ServerEntryPointMountPath))
-	return strings.Join(cmds, " && ")
+	serverCmds = append(serverCmds, cmds...)
+	serverCmds = append(serverCmds, fmt.Sprintf("sh %s", ServerEntryPointMountPath))
+	return strings.Join(serverCmds, " && ")
 }
 
 func genWorkerCommand() string {
@@ -104,13 +125,18 @@ func genWorkerCommand() string {
 }
 
 func getGeneralCommand() []string {
-	cpMomConfigCmd := fmt.Sprintf("cp %s %s", PBSMonPrivMountPath, PBSMonPrivConfig)
-	pbsSSHStartCmd := fmt.Sprintf("chmod +x %s && %s start ", PBSSH, PBSSH)
-	pbsStartCmd := fmt.Sprintf("%s start ", PBSCmd)
+	cpPBSProCmd := fmt.Sprintf("if [ -d %s ];then cp -r -p -n %s/* %s;fi", EmptyVolumeMountPathInMainContainer, EmptyVolumeMountPathInMainContainer, "/opt")
+	//cpMomConfigCmd := fmt.Sprintf("mkdir -p /var/spool/pbs/mom_priv && if [ -e %s ];then cp -n -p %s %s;fi", PBSMonPrivMountPath, PBSMonPrivMountPath, PBSMonPrivConfig)
+
+	initCmd := fmt.Sprintf("if [ -e %s ];then sh %s;fi", PBSInitShell, PBSInitShell)
+
+	pbsSSHStartCmd := fmt.Sprintf(" if [ -e %s ];then chmod +x %s && %s start;fi ", PBSSH, PBSSH, PBSSH)
+	pbsStatustCmd := fmt.Sprintf("%s status ", PBSCmd)
 
 	var cmds []string
-	cmds = append(cmds, cpMomConfigCmd)
+	//cmds = append(cmds, "sleep 100")
+	cmds = append(cmds, cpPBSProCmd, initCmd)
 	cmds = append(cmds, pbsSSHStartCmd)
-	cmds = append(cmds, pbsStartCmd)
+	cmds = append(cmds, pbsStatustCmd)
 	return cmds
 }

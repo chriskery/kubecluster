@@ -16,11 +16,13 @@ package torque_schema
 
 import (
 	"bytes"
+	"fmt"
 	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
 	"github.com/kubecluster/pkg/common"
 	"html/template"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
@@ -107,9 +109,6 @@ func setInitContainer(
 	podTemplate *corev1.PodTemplateSpec,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
 ) error {
-	if rtype == SchemaReplicaTypeServer {
-		return nil
-	}
 	g := getInitContainerGenerator()
 	controllerAddress := common.GenGeneralName(kcluster.Name, SchemaReplicaTypeServer, strconv.Itoa(0))
 	initContainers, err := g.GetInitContainer(controllerAddress)
@@ -117,6 +116,10 @@ func setInitContainer(
 		return err
 	}
 
+	cpPbsProCommand := fmt.Sprintf("if [ -d %s ] && [ -d %s ];then cp -r %s %s;fi", PBSProDir, EmptyVolumeMountPathInInitContainer, PBSProDir, EmptyVolumeMountPathInInitContainer)
+	cpPostGresCommand := fmt.Sprintf("if [ -d %s ] && [ -d %s ];then cp -r %s %s;fi", PostGresDir, EmptyVolumeMountPathInInitContainer, PostGresDir, EmptyVolumeMountPathInInitContainer)
+
+	initContainers[0].Command = []string{"sh", "-c", strings.Join([]string{cpPbsProCommand, cpPostGresCommand}, " && ")}
 	//we only need to change tha last
 	podTemplate.Spec.InitContainers = append(podTemplate.Spec.InitContainers,
 		initContainers...)

@@ -138,6 +138,7 @@ func (t *TorqueClusterSchemaReconciler) genPBSServerEntrypoint(kcluster *kubeclu
 			)
 		}
 	}
+	entrypointShell = fmt.Sprintf("%s\n%s", entrypointShell, "rm -rf /var/spool/pbs")
 	entrypointShell = fmt.Sprintf("%s\n%s", entrypointShell, "sleep infinity")
 	return entrypointShell
 }
