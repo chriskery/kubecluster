@@ -65,8 +65,13 @@ trap "cleanup" EXIT SIGINT
 echo ">> Temporary output directory ${TEMP_DIR}"
 
 # Ensure we can execute.
-chmod +x "${CODEGEN_PKG}"/generate-groups.sh
-chmod +x "${CODEGEN_PKG}"/generate-internal-groups.sh.sh
+if [ -e "${CODEGEN_PKG}"/generate-groups.sh ];then
+  chmod +x "${CODEGEN_PKG}"/generate-groups.sh
+fi
+
+if [ -e "${CODEGEN_PKG}"/generate-internal-groups.sh ];then
+  chmod +x "${CODEGEN_PKG}"/generate-internal-groups.sh
+fi
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
