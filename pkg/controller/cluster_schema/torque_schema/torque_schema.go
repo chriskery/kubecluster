@@ -138,7 +138,6 @@ func (t *TorqueClusterSchemaReconciler) UpdateClusterStatus(
 			}
 		}
 	}
-	return
 }
 
 func (t *TorqueClusterSchemaReconciler) IsController(

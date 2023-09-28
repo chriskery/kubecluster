@@ -134,6 +134,14 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/manif
 
 ##@ Build Dependencies
 
+GOLANGCI_LINT=$(shell which golangci-lint)
+golangci-lint:
+ifeq ($(GOLANGCI_LINT),)
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin v1.53.3
+	$(info golangci-lint has been installed)
+endif
+	golangci-lint run --timeout 5m --go 1.21 ./...
+
 ## Location to install dependencies to
 LOCALBIN ?= $(shell pwd)/bin
 $(LOCALBIN):
@@ -168,3 +176,4 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+

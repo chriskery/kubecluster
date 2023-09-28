@@ -275,7 +275,7 @@ func (s *slurmClusterSchemaReconciler) UpdateConfigMap(kcluster *kubeclusterorgv
 			if len(hostName) == 0 {
 				hostName = pod.Spec.NodeName
 			}
-			strings.Replace(slurmConf, "NodeName="+pod.GetName(), "NodeName="+hostName, 1)
+			slurmConf = strings.Replace(slurmConf, "NodeName="+pod.GetName(), "NodeName="+hostName, 1)
 			hostNetWorkNodesListSet.Delete(pod.GetName())
 		}
 	}
