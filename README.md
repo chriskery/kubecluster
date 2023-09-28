@@ -1,52 +1,31 @@
 # kubecluster
-[![Build Status](https://github.com/chriskery/kubecluster/actions/workflows/test-go.yaml/badge.svg?branch=master)](https://github.com/chriskery/kubecluster/actions/workflows/test-go.yaml?branch=master)
-[![Coverage Status](https://coveralls.io/repos/github/kubeflow/training-operator/badge.svg?branch=master)](https://coveralls.io/github/kubeflow/training-operator?branch=master)
+[![Build Status](https://github.com/chriskery/kubecluster/actions/workflows/test-go.yml/badge.svg?branch=master)](https://github.com/chriskery/kubecluster/actions/workflows/test-go.yaml?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/chriskery/kubecluster/badge.svg?branch=master)](https://coveralls.io/github/chriskery/kubecluster?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/chriskery/kubecluster)](https://goreportcard.com/report/github.com/chriskery/kubecluster)
 
-### A simple way to create multiple type of clusters in the kubernetes cluster
+### The kubecluster implements a mechanism that makes it easy to build Slurm/Torque clusters on Kubernetes.
 
-## Description
-Just with a 
+## Features
+Kubecluster uses Pods to simulate nodes in different clusters, currently supports the following cluster types :
 
+- [Slurm](pkg/controller/slurm_schema)
+- [Torque( PBS )](pkg/controller/torque_schema)
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
-### Running on the cluster
-1. Install Instances of Custom Resources:
+## Installation
 
-```sh
-kubectl apply -k manifests/samples/
+### Master Branch
+
+```bash
+kubectl apply -k "github.com/chriskery/kubecluster/manifests/default"
 ```
 
-2. Build and push your image to the location specified by `IMG`:
+## Quick Start
 
-```sh
-make docker-build docker-push IMG=<some-registry>/kubecluster:tag
-```
+Please refer to the [quick-start.md](docs/quick-start.md) and [Kubeflow Training User Guide](https://www.kubeflow.org/docs/guides/components/tftraining/) for more information.
 
-3. Deploy the controller to the cluster with the image specified by `IMG`:
-
-```sh
-make deploy IMG=<some-registry>/kubecluster:tag
-```
-
-### Uninstall CRDs
-To delete the CRDs from the cluster:
-
-```sh
-make uninstall
-```
-
-### Undeploy controller
-UnDeploy the controller from the cluster:
-
-```sh
-make undeploy
-```
-
-## Contributing
-// TODO(user): Add detailed information on how you would like others to contribute to this project
 
 ### How it works
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/).
@@ -95,4 +74,5 @@ distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
+
 
