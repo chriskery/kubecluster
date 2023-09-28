@@ -1,4 +1,8 @@
 # kubecluster
+[![Build Status](https://github.com/chriskery/kubecluster/actions/workflows/test-go.yaml/badge.svg?branch=master)](https://github.com/chriskery/kubecluster/actions/workflows/test-go.yaml?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/kubeflow/training-operator/badge.svg?branch=master)](https://coveralls.io/github/kubeflow/training-operator?branch=master)
+[![Go Report Card](https://goreportcard.com/badge/github.com/chriskery/kubecluster)](https://goreportcard.com/report/github.com/chriskery/kubecluster)
+
 ### A simple way to create multiple type of clusters in the kubernetes cluster
 
 ## Description

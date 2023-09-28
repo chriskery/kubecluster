@@ -3,8 +3,8 @@ package slurm_schema
 import (
 	"errors"
 	"fmt"
-	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/util/quota"
+	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/pkg/util/quota"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/klog/v2"

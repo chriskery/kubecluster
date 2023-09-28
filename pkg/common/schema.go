@@ -1,8 +1,8 @@
 package common
 
 import (
-	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/controller/expectation"
+	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/pkg/controller/expectation"
 	v1 "k8s.io/api/core/v1"
 )
 

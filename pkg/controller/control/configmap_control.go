@@ -3,7 +3,7 @@ package control
 import (
 	"context"
 	"fmt"
-	"github.com/kubecluster/pkg/util"
+	"github.com/chriskery/kubecluster/pkg/util"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"

@@ -19,16 +19,16 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/pkg/common"
+	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema"
+	"github.com/chriskery/kubecluster/pkg/controller/control"
+	"github.com/chriskery/kubecluster/pkg/controller/ctrlcommon"
+	"github.com/chriskery/kubecluster/pkg/controller/ctrlutil"
+	"github.com/chriskery/kubecluster/pkg/core"
+	"github.com/chriskery/kubecluster/pkg/util"
+	utillabels "github.com/chriskery/kubecluster/pkg/util/labels"
 	"github.com/go-logr/logr"
-	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/common"
-	"github.com/kubecluster/pkg/controller/cluster_schema"
-	"github.com/kubecluster/pkg/controller/control"
-	"github.com/kubecluster/pkg/controller/ctrlcommon"
-	"github.com/kubecluster/pkg/controller/ctrlutil"
-	"github.com/kubecluster/pkg/core"
-	"github.com/kubecluster/pkg/util"
-	utillabels "github.com/kubecluster/pkg/util/labels"
 	"github.com/sirupsen/logrus"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
@@ -52,7 +52,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
-	commonmetrics "github.com/kubecluster/pkg/metrics"
+	commonmetrics "github.com/chriskery/kubecluster/pkg/metrics"
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 
 	"volcano.sh/apis/pkg/apis/scheduling/v1beta1"
@@ -211,11 +211,12 @@ func (r *KubeClusterReconciler) UpdateConfigMapInApiServer(metaObject metav1.Obj
 	return nil
 }
 
-//+kubebuilder:rbac:groups=kubecluster.org,resources=clusters,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=kubecluster.org,resources=clusters/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=kubecluster.org,resources=clusters/finalizers,verbs=update
+//+kubebuilder:rbac:groups=kubecluster.org,resources=kubeclusters,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=kubecluster.org,resources=kubeclusters/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=kubecluster.org,resources=kubeclusters/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;list;watch;create;delete
 //+kubebuilder:rbac:groups=scheduling.volcano.sh,resources=podgroups,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=scheduling.x-k8s.io,resources=podgroups,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch;delete

@@ -3,9 +3,9 @@ package cluster_schema
 import (
 	"context"
 	"fmt"
-	"github.com/kubecluster/pkg/common"
-	"github.com/kubecluster/pkg/controller/cluster_schema/slurm_schema"
-	"github.com/kubecluster/pkg/controller/cluster_schema/torque_schema"
+	"github.com/chriskery/kubecluster/pkg/common"
+	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema/slurm_schema"
+	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema/torque_schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"strings"
 )

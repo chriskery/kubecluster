@@ -2,9 +2,9 @@ package ctrlcommon
 
 import (
 	"fmt"
-	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/controller/expectation"
-	utillabels "github.com/kubecluster/pkg/util/labels"
+	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/pkg/controller/expectation"
+	utillabels "github.com/chriskery/kubecluster/pkg/util/labels"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	v1 "k8s.io/api/core/v1"

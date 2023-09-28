@@ -20,9 +20,9 @@ import (
 	"context"
 	"errors"
 	"flag"
-	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/controller/cluster_schema"
-	"github.com/kubecluster/pkg/controller/ctrlcommon"
+	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema"
+	"github.com/chriskery/kubecluster/pkg/controller/ctrlcommon"
 	"os"
 	"strings"
 	volcanoclient "volcano.sh/apis/pkg/client/clientset/versioned"
@@ -39,7 +39,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/kubecluster/pkg/controller"
+	"github.com/chriskery/kubecluster/pkg/controller"
 	//+kubebuilder:scaffold:imports
 )
 

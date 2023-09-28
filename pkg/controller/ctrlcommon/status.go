@@ -1,8 +1,8 @@
 package ctrlcommon
 
 import (
-	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/core"
+	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/pkg/core"
 	corev1 "k8s.io/api/core/v1"
 )
 

@@ -20,7 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 
 	"github.com/google/go-cmp/cmp"
 	log "github.com/sirupsen/logrus"

@@ -17,7 +17,7 @@ limitations under the License.
 package core
 
 import (
-	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 )
 
