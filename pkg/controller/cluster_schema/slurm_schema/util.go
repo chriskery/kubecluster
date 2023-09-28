@@ -15,8 +15,7 @@ import (
 )
 
 func GenRandomInt31n(min, max int) int {
-	rand.Seed(time.Now().UnixNano())
-	return rand.Intn(max-min+1) + (min)
+	return rand.New(rand.NewSource(time.Now().UnixNano())).Intn(max-min+1) + (min)
 }
 
 func genSlurmRandomPort() (int, int) {

@@ -95,10 +95,7 @@ func (t *TorqueClusterSchemaReconciler) isNeedReconcileConfigMap(configMap *core
 	}
 
 	_, exists = configMap.Data[PBSMomConfigKey]
-	if !exists {
-		return true
-	}
-	return false
+	return !exists
 }
 
 func (t *TorqueClusterSchemaReconciler) genServerPBSConf(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {

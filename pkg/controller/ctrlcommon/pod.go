@@ -48,10 +48,6 @@ var (
 		Name: "created_pods_total",
 		Help: "The total number of created pods",
 	})
-	deletedPodsCount = promauto.NewCounter(prometheus.CounterOpts{
-		Name: "deleted_pods_total",
-		Help: "The total number of deleted pods",
-	})
 	failedPodsCount = promauto.NewCounter(prometheus.CounterOpts{
 		Name: "failed_pods_total",
 		Help: "The total number of failed pods",
@@ -91,8 +87,7 @@ func (cc *ClusterController) CreateNewPod(
 		utillabels.SetClusterRole(labels, "controller")
 	}
 
-	var podTemplate *v1.PodTemplateSpec
-	podTemplate = (*v1.PodTemplateSpec)(spec.Template.DeepCopy())
+	podTemplate := (*v1.PodTemplateSpec)(spec.Template.DeepCopy())
 
 	idxStr := strconv.Itoa(index)
 	// Set name for the template.

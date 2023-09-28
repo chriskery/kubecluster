@@ -139,7 +139,6 @@ func (s *slurmClusterSchemaReconciler) UpdateClusterStatus(
 			common.FailedClustersCounterInc(kcluster.Namespace, kcluster.Spec.ClusterType)
 		}
 	}
-	return
 }
 
 func (s *slurmClusterSchemaReconciler) IsController(
@@ -180,7 +179,7 @@ func (s *slurmClusterSchemaReconciler) GetDefaultContainerName() string {
 }
 
 func (s *slurmClusterSchemaReconciler) ValidateV1KubeCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) error {
-	for replicaType, _ := range kcluster.Spec.ClusterReplicaSpec {
+	for replicaType := range kcluster.Spec.ClusterReplicaSpec {
 		if SchemaReplicaTypeController == replicaType {
 			return nil
 		}

@@ -196,32 +196,6 @@ func (cc *ClusterController) GenLabels(clusterType string) map[string]string {
 	}
 }
 
-// GetPortsFromClusterSpec gets the ports of job container. Port could be nil, if distributed communication strategy doesn't need and no other ports that need to be exposed.
-func (cc *ClusterController) cat(spec *v1alpha1.ReplicaSpec, containerName string) (map[string]int32, error) {
-	return core.GetPortsFromCluster(spec, containerName)
-}
-
-// resolveControllerRef returns the KubeCluster referenced by a ControllerRef,
-// or nil if the ControllerRef could not be resolved to a matching KubeCluster
-// of the correct Kind.
-func (cc *ClusterController) resolveControllerRef(namespace string, controllerRef *metav1.OwnerReference) metav1.Object {
-	// We can't look up by UID, so look up by Name and then verify UID.
-	// Don't even try to look up by Name if it's the wrong Kind.
-	if controllerRef.Kind != cc.Controller.GetAPIGroupVersionKind().Kind {
-		return nil
-	}
-	Cluster, err := cc.Controller.GetClusterFromInformerCache(namespace, controllerRef.Name)
-	if err != nil {
-		return nil
-	}
-	if Cluster.GetUID() != controllerRef.UID {
-		// The controller we found with this Name is not the same one that the
-		// ControllerRef points to.
-		return nil
-	}
-	return Cluster
-}
-
 func (cc *ClusterController) RegisterSchema(schema cluster_schema.ClusterSchema, reconciler common.ClusterSchemaReconciler) error {
 	cc.SchemaReconcilerMutux.Lock()
 	defer cc.SchemaReconcilerMutux.Unlock()
