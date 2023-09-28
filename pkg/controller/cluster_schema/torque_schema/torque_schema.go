@@ -83,9 +83,9 @@ func (t *TorqueClusterSchemaReconciler) UpdateClusterStatus(
 	if rtype == SchemaReplicaTypeServer {
 		var msg string
 		if running == 0 && failed == 0 {
-			msg = fmt.Sprintf("KubeCLuster %t is running.", kcluster.GetName())
+			msg = fmt.Sprintf("KubeCLuster %s is running.", kcluster.GetName())
 		} else if running > 0 {
-			msg = fmt.Sprintf("KubeCLuster %t is avtivating.", kcluster.GetName())
+			msg = fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
 		}
 		if len(msg) != 0 {
 			util.UpdateClusterConditions(
@@ -122,11 +122,11 @@ func (t *TorqueClusterSchemaReconciler) UpdateClusterStatus(
 			common.RestartedClustersCounterInc(kcluster.GetNamespace(), kcluster.Spec.ClusterType)
 		} else {
 			if rtype != SchemaReplicaTypeServer {
-				util.LoggerForCluster(kcluster).Infof("KubeCLuster %t/%t continues regardless %d  %t replica(t) failed .",
+				util.LoggerForCluster(kcluster).Infof("KubeCLuster %s/%s continues regardless %d  %s replica(t) failed .",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
 
 			} else {
-				msg := fmt.Sprintf("KubeCLuster %t/%t has failed because %d %t replica(t) failed.",
+				msg := fmt.Sprintf("KubeCLuster %s/%s has failed because %d %s replica(t) failed.",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
 				t.Recorder.Event(kcluster, corev1.EventTypeNormal, util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterFailedReason), msg)
 				if clusterStatus.CompletionTime == nil {
