@@ -27,7 +27,7 @@ set -o nounset
 set -o pipefail
 
 SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
-ROOT_PKG=github.com/kubecluster
+ROOT_PKG=github.com/chriskery/kubecluster
 
 GET_PKG_LOCATION() {
   pkg_name="${1:-}"
@@ -72,7 +72,7 @@ chmod +x ${CODEGEN_PKG}/generate-groups.sh
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
 cd ${SCRIPT_ROOT}
 ${CODEGEN_PKG}/generate-groups.sh "client,lister,informer" \
-    github.com/kubecluster/pkg/client github.com/kubecluster/apis \
+    github.com/chriskery/kubecluster/pkg/client github.com/chriskery/kubecluster/apis \
     kubecluster.org:v1alpha1 \
     --output-base "${TEMP_DIR}" \
     --go-header-file hack/boilerplate/boilerplate.go.txt
@@ -84,9 +84,9 @@ ${CODEGEN_PKG}/generate-groups.sh "client,lister,informer" \
 
 # $(go env GOPATH)/bin/defaulter-gen is automatically built from ${CODEGEN_PKG}/generate-groups.sh
 echo "Generating defaulters for v1alpha1"
-$(go env GOPATH)/bin/defaulter-gen --input-dirs github.com/kubecluster/apis/kubecluster.org/v1alpha1 \
+$(go env GOPATH)/bin/defaulter-gen --input-dirs github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1 \
     -O zz_generated.defaults \
-    --output-package github.com/kubecluster/apis/kubecluster.org/v1alpha1\
+    --output-package github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1\
     --go-header-file hack/boilerplate/boilerplate.go.txt "$@" \
     --output-base "${TEMP_DIR}"
 
@@ -98,9 +98,9 @@ echo "Building openapi-gen"
 go build -o openapi-gen "${OPENAPI_PKG}"/cmd/openapi-gen
 
 echo "Generating OpenAPI specification for v1alpha1"
-./openapi-gen --input-dirs github.com/kubecluster/apis/kubecluster.org/v1alpha1\
+./openapi-gen --input-dirs github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1\
     --report-filename=hack/violation_exception.list \
-    --output-package github.com/kubecluster/apis/kubecluster.org/v1alpha1\
+    --output-package github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1\
     --go-header-file hack/boilerplate/boilerplate.go.txt "$@" \
     --output-base "${TEMP_DIR}"
 
