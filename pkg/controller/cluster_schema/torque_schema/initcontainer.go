@@ -119,7 +119,11 @@ func setInitContainer(
 	cpPbsProCommand := fmt.Sprintf("if [ -d %s ] && [ -d %s ];then cp -r %s %s;fi", PBSProDir, EmptyVolumeMountPathInInitContainer, PBSProDir, EmptyVolumeMountPathInInitContainer)
 	cpPostGresCommand := fmt.Sprintf("if [ -d %s ] && [ -d %s ];then cp -r %s %s;fi", PostGresDir, EmptyVolumeMountPathInInitContainer, PostGresDir, EmptyVolumeMountPathInInitContainer)
 
-	initContainers[0].Command = []string{"sh", "-c", strings.Join([]string{cpPbsProCommand, cpPostGresCommand}, " && ")}
+	if rtype == SchemaReplicaTypeServer {
+		initContainers[0].Command = []string{"sh", "-c", strings.Join([]string{cpPbsProCommand, cpPostGresCommand}, " && ")}
+	} else {
+		initContainers[0].Command = []string{"sh", "-c", strings.Join([]string{cpPbsProCommand, cpPostGresCommand, strings.Join(initContainers[0].Command, " ")}, " && ")}
+	}
 	//we only need to change tha last
 	podTemplate.Spec.InitContainers = append(podTemplate.Spec.InitContainers,
 		initContainers...)

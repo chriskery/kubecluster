@@ -211,11 +211,12 @@ func (r *KubeClusterReconciler) UpdateConfigMapInApiServer(metaObject metav1.Obj
 	return nil
 }
 
-//+kubebuilder:rbac:groups=kubecluster.org,resources=clusters,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=kubecluster.org,resources=clusters/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=kubecluster.org,resources=clusters/finalizers,verbs=update
+//+kubebuilder:rbac:groups=kubecluster.org,resources=kubeclusters,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=kubecluster.org,resources=kubeclusters/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=kubecluster.org,resources=kubeclusters/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=services,verbs=get;list;watch;create;delete
+//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;update;list;watch;create;delete
 //+kubebuilder:rbac:groups=scheduling.volcano.sh,resources=podgroups,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=scheduling.x-k8s.io,resources=podgroups,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=events,verbs=get;list;watch;create;update;patch;delete

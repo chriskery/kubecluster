@@ -8234,6 +8234,12 @@ spec:
           status:
             description: ClusterStatus defines the observed state of KubeCluster
             properties:
+              completionTime:
+                description: Represents time when the job was completed. It is not
+                  guaranteed to be set in happens-before order across separate operations.
+                  It is represented in RFC3339 form and is in UTC.
+                format: date-time
+                type: string
               conditions:
                 description: Conditions is an array of current observed KubeCluster
                   conditions.
@@ -8279,12 +8285,12 @@ spec:
                   description: ReplicaStatus represents the current observed state
                     of the replica.
                   properties:
-                    active:
-                      description: The number of actively running pods.
+                    activating:
+                      description: The number of pods which reached phase Succeeded.
                       format: int32
                       type: integer
-                    creating:
-                      description: The number of pods which reached phase Succeeded.
+                    active:
+                      description: The number of actively running pods.
                       format: int32
                       type: integer
                     failed:
