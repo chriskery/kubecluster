@@ -58,20 +58,21 @@ echo ">> Using ${OPENAPI_PKG}"
 TEMP_DIR=$(mktemp -d)
 cleanup() {
     echo ">> Removing ${TEMP_DIR}"
-    rm -rf ${TEMP_DIR}
+    rm -rf "${TEMP_DIR}"
 }
 trap "cleanup" EXIT SIGINT
 
 echo ">> Temporary output directory ${TEMP_DIR}"
 
 # Ensure we can execute.
-chmod +x ${CODEGEN_PKG}/generate-groups.sh
+chmod +x "${CODEGEN_PKG}"/generate-groups.sh
+chmod +x "${CODEGEN_PKG}"/generate-internal-groups.sh.sh
 # generate the code with:
 # --output-base    because this script should also be able to run inside the vendor dir of
 #                  k8s.io/kubernetes. The output-base is needed for the generators to output into the vendor dir
 #                  instead of the $GOPATH directly. For normal projects this can be dropped.
-cd ${SCRIPT_ROOT}
-${CODEGEN_PKG}/generate-groups.sh "client,lister,informer" \
+cd "${SCRIPT_ROOT}"
+"${CODEGEN_PKG}"/generate-groups.sh "client,lister,informer" \
     github.com/chriskery/kubecluster/pkg/client github.com/chriskery/kubecluster/apis \
     kubecluster.org:v1alpha1 \
     --output-base "${TEMP_DIR}" \
