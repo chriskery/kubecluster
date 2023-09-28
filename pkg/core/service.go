@@ -18,9 +18,9 @@ package core
 
 import (
 	"fmt"
-	utillabels "github.com/kubecluster/pkg/util/labels"
+	utillabels "github.com/chriskery/kubecluster/pkg/util/labels"
 
-	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"

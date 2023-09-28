@@ -16,12 +16,12 @@ package ctrlutil
 
 import (
 	"fmt"
-	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	common2 "github.com/kubecluster/pkg/common"
-	"github.com/kubecluster/pkg/controller/cluster_schema"
-	"github.com/kubecluster/pkg/controller/ctrlcommon"
-	"github.com/kubecluster/pkg/controller/expectation"
-	"github.com/kubecluster/pkg/util"
+	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	common2 "github.com/chriskery/kubecluster/pkg/common"
+	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema"
+	"github.com/chriskery/kubecluster/pkg/controller/ctrlcommon"
+	"github.com/chriskery/kubecluster/pkg/controller/expectation"
+	"github.com/chriskery/kubecluster/pkg/util"
 	"reflect"
 
 	corev1 "k8s.io/api/core/v1"

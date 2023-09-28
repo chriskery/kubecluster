@@ -15,7 +15,7 @@
 package k8sutil
 
 import (
-	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 	"net"
 	"os"
 

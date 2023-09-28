@@ -20,8 +20,8 @@ package v1alpha1
 import (
 	"net/http"
 
-	v1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	"github.com/kubecluster/pkg/client/clientset/versioned/scheme"
+	v1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/pkg/client/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 

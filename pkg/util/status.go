@@ -2,7 +2,7 @@ package util
 
 import (
 	"fmt"
-	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )

@@ -16,10 +16,10 @@ package ctrlutil
 
 import (
 	"fmt"
-	kubeclusterorgv1alpha1 "github.com/kubecluster/apis/kubecluster.org/v1alpha1"
-	common2 "github.com/kubecluster/pkg/common"
-	"github.com/kubecluster/pkg/controller/cluster_schema"
-	"github.com/kubecluster/pkg/controller/ctrlcommon"
+	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	common2 "github.com/chriskery/kubecluster/pkg/common"
+	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema"
+	"github.com/chriskery/kubecluster/pkg/controller/ctrlcommon"
 	"reflect"
 	"strings"
 

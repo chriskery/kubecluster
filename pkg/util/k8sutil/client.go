@@ -19,7 +19,7 @@ package k8sutil
 import (
 	"context"
 	"fmt"
-	"github.com/kubecluster/pkg/util"
+	"github.com/chriskery/kubecluster/pkg/util"
 	"net/http"
 
 	metav1unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

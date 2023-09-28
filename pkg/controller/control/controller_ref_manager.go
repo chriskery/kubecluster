@@ -16,7 +16,7 @@ package control
 
 import (
 	"fmt"
-	"github.com/kubecluster/pkg/util"
+	"github.com/chriskery/kubecluster/pkg/util"
 	"sync"
 
 	log "github.com/sirupsen/logrus"

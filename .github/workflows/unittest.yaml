@@ -12,7 +12,7 @@ jobs:
       GOPATH: ${{ github.workspace }}/go
     defaults:
       run:
-        working-directory: ${{ env.GOPATH }}/src/github.com/kubeflow/training-operator
+        working-directory: ${{ env.GOPATH }}/src/github.com/chriskery/kubecluster
 
     strategy:
       fail-fast: false
@@ -23,12 +23,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
         with:
-          path: ${{ env.GOPATH }}/src/github.com/kubeflow/training-operator
+          path: ${{ env.GOPATH }}/src/github.com/chriskery/kubecluster
 
       - name: Setup Go
         uses: actions/setup-go@v3
         with:
-          go-version-file: ${{ env.GOPATH }}/src/github.com/kubeflow/training-operator/go.mod
+          go-version-file: ${{ env.GOPATH }}/src/github.com/chriskery/kubecluster/go.mod
 
       - name: Run Go test
         run: |
@@ -38,4 +38,4 @@ jobs:
         uses: shogo82148/actions-goveralls@v1
         with:
           path-to-profile: cover.out
-          working-directory: ${{ env.GOPATH }}/src/github.com/kubeflow/training-operator
+          working-directory: ${{ env.GOPATH }}/src/github.com/chriskery/kubecluster

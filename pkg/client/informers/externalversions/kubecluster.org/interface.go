@@ -18,8 +18,8 @@ limitations under the License.
 package kubecluster
 
 import (
-	internalinterfaces "github.com/kubecluster/pkg/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/kubecluster/pkg/client/informers/externalversions/kubecluster.org/v1alpha1"
+	internalinterfaces "github.com/chriskery/kubecluster/pkg/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/chriskery/kubecluster/pkg/client/informers/externalversions/kubecluster.org/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

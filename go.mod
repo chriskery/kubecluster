@@ -1,4 +1,4 @@
-module github.com/kubecluster
+module github.com/chriskery/kubecluster
 
 go 1.21
 

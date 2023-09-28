@@ -16,7 +16,7 @@ package ctrlcommon
 
 import (
 	"fmt"
-	"github.com/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"

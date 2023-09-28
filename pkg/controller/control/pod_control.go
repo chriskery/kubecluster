@@ -17,7 +17,7 @@ package control
 import (
 	"context"
 	"fmt"
-	"github.com/kubecluster/pkg/util"
+	"github.com/chriskery/kubecluster/pkg/util"
 	"sync"
 
 	v1 "k8s.io/api/core/v1"
