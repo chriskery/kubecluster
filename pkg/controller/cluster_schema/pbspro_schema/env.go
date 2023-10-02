@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-package torque_schema
+package pbspro_schema
 
 import (
 	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"

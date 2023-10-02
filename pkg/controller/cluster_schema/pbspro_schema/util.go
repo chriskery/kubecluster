@@ -1,4 +1,4 @@
-package torque_schema
+package pbspro_schema
 
 import (
 	"fmt"
@@ -128,15 +128,15 @@ func getGeneralCommand() []string {
 	cpPBSProCmd := fmt.Sprintf("if [ -d %s ];then cp -r -p -n %s/* %s;fi", EmptyVolumeMountPathInMainContainer, EmptyVolumeMountPathInMainContainer, "/opt")
 	//cpMomConfigCmd := fmt.Sprintf("mkdir -p /var/spool/pbs/mom_priv && if [ -e %s ];then cp -n -p %s %s;fi", PBSMonPrivMountPath, PBSMonPrivMountPath, PBSMonPrivConfig)
 
+	assignPbsSTagCmd := fmt.Sprintf("if [ -d %s ];then chmod a+s %s %s;fi ", PBSExec, PBSIff, PBSRcp)
 	initCmd := fmt.Sprintf("if [ -e %s ];then sh %s;fi", PBSInitShell, PBSInitShell)
 
-	pbsSSHStartCmd := fmt.Sprintf(" if [ -e %s ];then chmod +x %s && %s start;fi ", PBSSH, PBSSH, PBSSH)
+	pbsSSHStartCmd := fmt.Sprintf(" if [ -e %s ];then chmod +x %s && . %s;fi ", PBSSH, PBSSH, PBSSH)
 	pbsStatustCmd := fmt.Sprintf("%s status ", PBSCmd)
 
 	var cmds []string
 	//cmds = append(cmds, "sleep 100")
-	cmds = append(cmds, cpPBSProCmd, initCmd)
-	cmds = append(cmds, pbsSSHStartCmd)
-	cmds = append(cmds, pbsStatustCmd)
+	cmds = append(cmds, cpPBSProCmd, assignPbsSTagCmd, initCmd)
+	cmds = append(cmds, pbsSSHStartCmd, pbsStatustCmd)
 	return cmds
 }

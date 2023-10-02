@@ -1,4 +1,4 @@
-package torque_schema
+package pbspro_schema
 
 import (
 	"context"
@@ -14,13 +14,18 @@ import (
 )
 
 const (
-	ClusterSchemaKind = "torque"
+	ClusterSchemaKind = "pbspro"
 
 	PBSSH  = "/etc/profile.d/pbs.sh"
 	PBSCmd = "/etc/init.d/pbs"
 
 	PBSExec = "/opt/pbs"
 	PBSBin  = PBSExec + "/bin"
+	PBSSBin = PBSExec + "/sbin"
+
+	PBSNodes = PBSBin + "/pbsnodes"
+	PBSIff   = PBSSBin + "/pbs_iff"
+	PBSRcp   = PBSSBin + "/pbs_rcp"
 
 	PBSInitShell = "/opt/pbs/init.sh"
 
@@ -34,21 +39,21 @@ const (
 	SchemaReplicaTypeServer kubeclusterorgv1alpha1.ReplicaType = "Server"
 )
 
-func NewTorqueClusterReconciler(_ context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
-	return &TorqueClusterSchemaReconciler{
+func NewpbsproClusterReconciler(_ context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
+	return &pbsproClusterSchemaReconciler{
 		ControllerExpectations: *expectation.NewControllerExpectations(),
 		Recorder:               mgr.GetEventRecorderFor(common.ControllerName),
 	}, nil
 }
 
-type TorqueClusterSchemaReconciler struct {
+type pbsproClusterSchemaReconciler struct {
 	expectation.ControllerExpectations
 	// Recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	Recorder record.EventRecorder
 }
 
-func (t *TorqueClusterSchemaReconciler) Default(kcluster *kubeclusterorgv1alpha1.KubeCluster) {
+func (t *pbsproClusterSchemaReconciler) Default(kcluster *kubeclusterorgv1alpha1.KubeCluster) {
 	// Update the key of Controller replica to camel case.
 	kubeclusterorgv1alpha1.SetTypeNameToCamelCase(kcluster.Spec.ClusterReplicaSpec, SchemaReplicaTypeServer)
 	for _, spec := range kcluster.Spec.ClusterReplicaSpec {
@@ -66,7 +71,7 @@ func (t *TorqueClusterSchemaReconciler) Default(kcluster *kubeclusterorgv1alpha1
 
 }
 
-func (t *TorqueClusterSchemaReconciler) UpdateClusterStatus(
+func (t *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
@@ -140,14 +145,14 @@ func (t *TorqueClusterSchemaReconciler) UpdateClusterStatus(
 	}
 }
 
-func (t *TorqueClusterSchemaReconciler) IsController(
+func (t *pbsproClusterSchemaReconciler) IsController(
 	spec map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
 	rType kubeclusterorgv1alpha1.ReplicaType,
 	index int) bool {
 	return (SchemaReplicaTypeServer) == (rType)
 }
 
-func (t *TorqueClusterSchemaReconciler) SetClusterSpec(
+func (t *pbsproClusterSchemaReconciler) SetClusterSpec(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	podTemplate *corev1.PodTemplateSpec,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
@@ -169,19 +174,19 @@ func (t *TorqueClusterSchemaReconciler) SetClusterSpec(
 	return nil
 }
 
-func (t *TorqueClusterSchemaReconciler) GetDefaultContainerName() string {
+func (t *pbsproClusterSchemaReconciler) GetDefaultContainerName() string {
 	return kubeclusterorgv1alpha1.ClusterDefaultContainerName
 }
 
-func (t *TorqueClusterSchemaReconciler) ValidateV1KubeCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) error {
+func (t *pbsproClusterSchemaReconciler) ValidateV1KubeCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) error {
 	for replicaType, spec := range kcluster.Spec.ClusterReplicaSpec {
 		if SchemaReplicaTypeServer != replicaType {
 			continue
 		}
 		if *spec.Replicas != 1 {
-			return fmt.Errorf("torque clusetr server replica must be 1")
+			return fmt.Errorf("pbspro clusetr server replica must be 1")
 		}
 		return nil
 	}
-	return fmt.Errorf("torque cluster need a replica named %v", SchemaReplicaTypeServer)
+	return fmt.Errorf("pbspro cluster need a replica named %v", SchemaReplicaTypeServer)
 }

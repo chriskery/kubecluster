@@ -3,6 +3,6 @@ resources:
 - slurm-centos.yaml
 - slurm-centos-hostNetwork.yaml
 - slurm-ubuntu.yaml
-- torque-centos.yaml
-- torque-ubuntu.yaml
+- pbspro-centos.yaml
+- pbspro-ubuntu.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

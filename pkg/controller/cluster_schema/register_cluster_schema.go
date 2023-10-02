@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/chriskery/kubecluster/pkg/common"
+	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema/pbspro_schema"
 	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema/slurm_schema"
-	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema/torque_schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"strings"
 )
@@ -20,8 +20,8 @@ var SupportedClusterSchemaReconciler = map[ClusterSchema]ClusterSchemaFactory{
 	slurm_schema.ClusterSchemaKind: func(ctx context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
 		return slurm_schema.NewSlurmClusterReconciler(ctx, mgr)
 	},
-	torque_schema.ClusterSchemaKind: func(ctx context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
-		return torque_schema.NewTorqueClusterReconciler(ctx, mgr)
+	pbspro_schema.ClusterSchemaKind: func(ctx context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
+		return pbspro_schema.NewpbsproClusterReconciler(ctx, mgr)
 	},
 }
 
