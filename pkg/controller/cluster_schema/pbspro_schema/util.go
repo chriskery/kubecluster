@@ -4,7 +4,6 @@ import (
 	"fmt"
 	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
-	"strings"
 )
 
 func setPodNetwork(template *corev1.PodTemplateSpec) {
@@ -63,6 +62,12 @@ func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, r
 				SubPath:   PBSWorkerConfKey,
 				ReadOnly:  false,
 			})
+			template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+				Name:      configMapName,
+				MountPath: WorkerEntryPointMountPath,
+				SubPath:   WorkerEntrypoint,
+				ReadOnly:  false,
+			})
 		}
 
 		template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
@@ -102,26 +107,25 @@ func setCmd(_ *kubeclusterorgv1alpha1.KubeCluster, podTemplateSpec *corev1.PodTe
 			podTemplateSpec.Spec.Containers[i].Command = make([]string, 0)
 		}
 		if rtype == SchemaReplicaTypeServer {
-			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", genServerCommand()}
+			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", ServerEntryPointMountPath}
 		} else {
-			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", genWorkerCommand()}
+			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", WorkerEntryPointMountPath}
 		}
 	}
 }
 
-func genServerCommand() string {
+func genServerCommand() []string {
 	serverCmds := make([]string, 0)
 	serverCmds = append(serverCmds, "rm -rf /var/spool/pbs")
 	cmds := getGeneralCommand()
 	serverCmds = append(serverCmds, cmds...)
-	serverCmds = append(serverCmds, fmt.Sprintf("sh %s", ServerEntryPointMountPath))
-	return strings.Join(serverCmds, " && ")
+	return serverCmds
 }
 
-func genWorkerCommand() string {
+func genWorkerCommand() []string {
 	cmds := getGeneralCommand()
 	cmds = append(cmds, "sleep infinity")
-	return strings.Join(cmds, " && ")
+	return cmds
 }
 
 func getGeneralCommand() []string {
@@ -131,7 +135,7 @@ func getGeneralCommand() []string {
 	assignPbsSTagCmd := fmt.Sprintf("if [ -d %s ];then chmod a+s %s %s;fi ", PBSExec, PBSIff, PBSRcp)
 	initCmd := fmt.Sprintf("if [ -e %s ];then sh %s;fi", PBSInitShell, PBSInitShell)
 
-	pbsSSHStartCmd := fmt.Sprintf(" if [ -e %s ];then chmod +x %s && . %s;fi ", PBSSH, PBSSH, PBSSH)
+	pbsSSHStartCmd := fmt.Sprintf("if [ -e %s ];then chmod +x %s && . %s;fi ", PBSSH, PBSSH, PBSSH)
 	pbsStatustCmd := fmt.Sprintf("%s status ", PBSCmd)
 
 	var cmds []string

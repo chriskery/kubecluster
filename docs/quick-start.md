@@ -1,4 +1,4 @@
-## Create a pbspro Cluster
+## Build a pbspro Cluster
 
 **Create pbspro YAML**
 
@@ -9,7 +9,7 @@ kubectl create -f ../manifests/samples/pbspro-centos.yaml
 The pbspro centos example create a pbspro cluster with 1 server and 1 worker, 
 so it will create two pods to simulate two nodes for the pbspro cluster
 
-**Get pbspro Status**
+**Get kubeclusters Status**
 
 Execute the following command:
 ```
@@ -22,7 +22,7 @@ NAME                   AGE   STATE
 pbspro-centos-sample   3s    Running
 ```
 
-Now you can enter the " server node " and use this pbspro-centos-sample look like you're actually using a physical pbspro cluster
+Now you can enter the " server node " as  you're actually using a physical pbspro cluster
 ```
 > kubectl get pods        
 NAME                                READY   STATUS    RESTARTS   AGE
@@ -38,6 +38,7 @@ kubectl exec [POD] [COMMAND] is DEPRECATED and will be removed in a future versi
 ```
 
 **Using pbspro Cluster**
+
 Viewing Nodes' status of pbspro-centos-sample
 ```
 [root@pbspro-centos-sample-server-0 pbs]# pbsnodes -a
@@ -84,6 +85,24 @@ pbspro-centos-sample-cpu-0
      resv_enable = True
      sharing = default_shared
      last_state_change_time = Thu Sep 28 07:05:43 2023
+```
+Switch to the normal user and submit the job using [qsub](https://www.jlab.org/hpc/PBS/qsub.html)
+```shell
+[root@pbspro-centos-sample-server-0 /]# useradd pbsexample
+[root@pbspro-centos-sample-server-0 /]# su pbsexample
+[pbsexample@pbspro-centos-sample-server-0 /]$ qsub -- hostname
+2.pbspro-centos-sample-server-0
+[pbsexample@pbspro-centos-sample-server-0 /]$
+```
+Use [qstat](https://docs.adaptivecomputing.com/torque/4-0-2/Content/topics/commands/qstat.htm) to view the job we just submitted
+```
+[pbsexample@pbspro-centos-sample-server-0 /]$ qstat -a
+
+pbspro-centos-sample-server-0: 
+                                                            Req'd  Req'd   Elap
+Job ID          Username Queue    Jobname    SessID NDS TSK Memory Time  S Time
+--------------- -------- -------- ---------- ------ --- --- ------ ----- - -----
+2.pbspro-centos pbsexamp workq    STDIN        1377   1   1    --    --  E 00:00
 ```
 
 

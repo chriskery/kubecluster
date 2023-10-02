@@ -16,20 +16,13 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 
 ## Installation
 
-<<<<<<< HEAD
 ```sh
-kubectl apply -k manifests/samples/
-=======
-### Master Branch
-
-```bash
 kubectl apply -k "github.com/chriskery/kubecluster/manifests/default"
->>>>>>> master
 ```
 
 ## Quick Start
 
-Please refer to the [quick-start.md](docs/quick-start.md) and [Kubeflow Training User Guide](https://www.kubeflow.org/docs/guides/components/tftraining/) for more information.
+Please refer to the [quick-start.md](docs/quick-start.md)  for more information.
 
 
 ### How it works

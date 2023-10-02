@@ -28,7 +28,9 @@ const (
 	PBSMonPrivMountPath = "/tmp/var/spool/pbs/mom_priv/config"
 
 	ServerEntrypoint          = "entrypoint.sh"
+	WorkerEntrypoint          = "worker-entrypoint.sh"
 	ServerEntryPointMountPath = "/tmp/" + ServerEntrypoint
+	WorkerEntryPointMountPath = "/tmp/" + WorkerEntrypoint
 
 	PBS_START_MOM_VALUE     = "1"
 	NOT_PBS_START_MOM_VALUE = "0"
@@ -54,11 +56,11 @@ PBS_HOME=/var/spool/pbs
 `
 )
 
-func (t *pbsproClusterSchemaReconciler) ReconcileConfigMap(
+func (p *pbsproClusterSchemaReconciler) ReconcileConfigMap(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	configMap *corev1.ConfigMap,
 ) error {
-	isNeedReconcile := t.isNeedReconcileConfigMap(configMap)
+	isNeedReconcile := p.isNeedReconcileConfigMap(configMap)
 	if !isNeedReconcile {
 		return nil
 	}
@@ -68,27 +70,31 @@ func (t *pbsproClusterSchemaReconciler) ReconcileConfigMap(
 
 	_, exists := configMap.Data[PBSServerConfKey]
 	if !exists {
-		configMap.Data[PBSServerConfKey] = t.genServerPBSConf(kcluster)
+		configMap.Data[PBSServerConfKey] = p.genServerPBSConf(kcluster)
 	}
 
 	_, exists = configMap.Data[PBSWorkerConfKey]
 	if !exists {
-		configMap.Data[PBSWorkerConfKey] = t.genWorkerPBSConf(kcluster)
+		configMap.Data[PBSWorkerConfKey] = p.genWorkerPBSConf(kcluster)
 	}
 
 	_, exists = configMap.Data[PBSMomConfigKey]
 	if !exists {
-		configMap.Data[PBSMomConfigKey] = t.genPBSMomConfig(kcluster)
+		configMap.Data[PBSMomConfigKey] = p.genPBSMomConfig(kcluster)
 	}
 
 	_, exists = configMap.Data[ServerEntrypoint]
 	if !exists {
-		configMap.Data[ServerEntrypoint] = t.genPBSServerEntrypoint(kcluster)
+		configMap.Data[ServerEntrypoint] = p.genPBSServerEntrypoint(kcluster)
+	}
+	_, exists = configMap.Data[WorkerEntrypoint]
+	if !exists {
+		configMap.Data[WorkerEntrypoint] = p.genPBSWorkerEntrypoint(kcluster)
 	}
 	return nil
 }
 
-func (t *pbsproClusterSchemaReconciler) isNeedReconcileConfigMap(configMap *corev1.ConfigMap) bool {
+func (p *pbsproClusterSchemaReconciler) isNeedReconcileConfigMap(configMap *corev1.ConfigMap) bool {
 	_, exists := configMap.Data[PBSConfKey]
 	if !exists {
 		return true
@@ -98,7 +104,7 @@ func (t *pbsproClusterSchemaReconciler) isNeedReconcileConfigMap(configMap *core
 	return !exists
 }
 
-func (t *pbsproClusterSchemaReconciler) genServerPBSConf(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
+func (p *pbsproClusterSchemaReconciler) genServerPBSConf(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
 	serverName := common.GenGeneralName(kcluster.Name, SchemaReplicaTypeServer, strconv.Itoa(0))
 	pbsConf := strings.Replace(pbsServerConfTemplate, placeHolderPBS_SERVER, serverName, 1)
 	pbsConf = strings.Replace(pbsConf, placeHolderPBS_START_MOM, PBS_START_MOM_VALUE, 1)
@@ -106,51 +112,23 @@ func (t *pbsproClusterSchemaReconciler) genServerPBSConf(kcluster *kubeclusteror
 	return pbsConf
 }
 
-func (s *pbsproClusterSchemaReconciler) genWorkerPBSConf(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
+func (p *pbsproClusterSchemaReconciler) genWorkerPBSConf(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
 	serverName := common.GenGeneralName(kcluster.Name, SchemaReplicaTypeServer, strconv.Itoa(0))
 	pbsConf := strings.Replace(pbsWorkerConfTemplate, placeHolderPBS_SERVER, serverName, 1)
 	pbsConf = strings.Replace(pbsConf, placeHolderPBS_EXEC, PBSExec, 1)
 	return pbsConf
 }
 
-func (t *pbsproClusterSchemaReconciler) genPBSMomConfig(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
+func (p *pbsproClusterSchemaReconciler) genPBSMomConfig(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
 	serverName := common.GenGeneralName(kcluster.Name, SchemaReplicaTypeServer, strconv.Itoa(0))
 	pbsMonPrivConfig := strings.Replace(pbsMonPrivConfigTemplate, placeHolderClientHost, serverName, 1)
 	return pbsMonPrivConfig
 }
 
-func (t *pbsproClusterSchemaReconciler) UpdateConfigMap(_ *kubeclusterorgv1alpha1.KubeCluster, _ *corev1.ConfigMap) error {
+func (p *pbsproClusterSchemaReconciler) UpdateConfigMap(_ *kubeclusterorgv1alpha1.KubeCluster, _ *corev1.ConfigMap) error {
 	return nil
 }
 
-/*
-# 定义要检查的节点名称列表
-node_names=("node1" "node2" "node3" "node4" "node5" "node6" "node7" "node8" "node9" "node10")
-
-# 循环遍历节点名称列表
-for node_name in "${node_names[@]}"; do
-
-	node_exists=0
-
-	# 循环检查节点是否存在，直到存在为止
-	while [ $node_exists -eq 0 ]; do
-	  # 使用catnodes+nodename命令检查节点是否存在
-	  catnodes+nodename "$node_name" > /dev/null 2>&1
-
-	  # 获取命令的返回状态码
-	  return_code=$?
-
-	  # 如果返回状态码为0，表示节点存在，设置标志为1并退出循环
-	  if [ $return_code -eq 0 ]; then
-	    node_exists=1
-	  else
-	    echo "节点 $node_name 不存在，等待5秒后重新检测..."
-	    sleep 5
-	  fi
-	done
-
-done
-*/
 const qmgrCreateNodeCmds = `for node_name in "${node_names[@]}"; do
   node_exists=0
   
@@ -169,11 +147,13 @@ const qmgrCreateNodeCmds = `for node_name in "${node_names[@]}"; do
   done
 done`
 
-func (t *pbsproClusterSchemaReconciler) genPBSServerEntrypoint(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
+func (p *pbsproClusterSchemaReconciler) genPBSServerEntrypoint(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
 	var entrypointShell = "#!/bin/bash\n"
+	for _, cmd := range genServerCommand() {
+		entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, cmd)
+	}
 
 	nodeNames := make([]string, 0)
-
 	for replicaType, spec := range kcluster.Spec.ClusterReplicaSpec {
 		totalReplica := *spec.Replicas
 		for i := 0; i < int(totalReplica); i++ {
@@ -183,8 +163,16 @@ func (t *pbsproClusterSchemaReconciler) genPBSServerEntrypoint(kcluster *kubeclu
 	}
 	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, fmt.Sprintf("node_names=(%s)", strings.Join(nodeNames, " ")))
 	qmgrCreateNodeCmd := strings.Replace(qmgrCreateNodeCmds, "{{.Pbsnodes}}", PBSNodes, 1)
-	qmgrCreateNodeCmd = strings.Replace(qmgrCreateNodeCmds, "{{.Qmgr}}", fmt.Sprintf("%s/qmgr", PBSBin), 1)
+	qmgrCreateNodeCmd = strings.Replace(qmgrCreateNodeCmd, "{{.Qmgr}}", fmt.Sprintf("%s/qmgr", PBSBin), 1)
 	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, qmgrCreateNodeCmd)
 	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, "sleep infinity")
+	return entrypointShell
+}
+
+func (p *pbsproClusterSchemaReconciler) genPBSWorkerEntrypoint(_ *kubeclusterorgv1alpha1.KubeCluster) string {
+	var entrypointShell = "#!/bin/bash\n"
+	for _, cmd := range genWorkerCommand() {
+		entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, cmd)
+	}
 	return entrypointShell
 }

@@ -53,11 +53,11 @@ type pbsproClusterSchemaReconciler struct {
 	Recorder record.EventRecorder
 }
 
-func (t *pbsproClusterSchemaReconciler) Default(kcluster *kubeclusterorgv1alpha1.KubeCluster) {
+func (p *pbsproClusterSchemaReconciler) Default(kcluster *kubeclusterorgv1alpha1.KubeCluster) {
 	// Update the key of Controller replica to camel case.
 	kubeclusterorgv1alpha1.SetTypeNameToCamelCase(kcluster.Spec.ClusterReplicaSpec, SchemaReplicaTypeServer)
 	for _, spec := range kcluster.Spec.ClusterReplicaSpec {
-		index := kubeclusterorgv1alpha1.GetDefaultContainerIndex(&spec.Template.Spec, t.GetDefaultContainerName())
+		index := kubeclusterorgv1alpha1.GetDefaultContainerIndex(&spec.Template.Spec, p.GetDefaultContainerName())
 		if ok := kubeclusterorgv1alpha1.HasDefaultPort(&spec.Template.Spec, index, "serve-port"); !ok {
 			kubeclusterorgv1alpha1.SetDefaultPort(&spec.Template.Spec, "serve-port", int32(15001), index)
 		}
@@ -71,7 +71,7 @@ func (t *pbsproClusterSchemaReconciler) Default(kcluster *kubeclusterorgv1alpha1
 
 }
 
-func (t *pbsproClusterSchemaReconciler) UpdateClusterStatus(
+func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
@@ -127,13 +127,13 @@ func (t *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 			common.RestartedClustersCounterInc(kcluster.GetNamespace(), kcluster.Spec.ClusterType)
 		} else {
 			if rtype != SchemaReplicaTypeServer {
-				util.LoggerForCluster(kcluster).Infof("KubeCLuster %s/%s continues regardless %d  %s replica(t) failed .",
+				util.LoggerForCluster(kcluster).Infof("KubeCLuster %s/%s continues regardless %d  %s replica(p) failed .",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
 
 			} else {
-				msg := fmt.Sprintf("KubeCLuster %s/%s has failed because %d %s replica(t) failed.",
+				msg := fmt.Sprintf("KubeCLuster %s/%s has failed because %d %s replica(p) failed.",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
-				t.Recorder.Event(kcluster, corev1.EventTypeNormal, util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterFailedReason), msg)
+				p.Recorder.Event(kcluster, corev1.EventTypeNormal, util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterFailedReason), msg)
 				if clusterStatus.CompletionTime == nil {
 					now := metav1.Now()
 					clusterStatus.CompletionTime = &now
@@ -145,14 +145,14 @@ func (t *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 	}
 }
 
-func (t *pbsproClusterSchemaReconciler) IsController(
+func (p *pbsproClusterSchemaReconciler) IsController(
 	spec map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
 	rType kubeclusterorgv1alpha1.ReplicaType,
 	index int) bool {
 	return (SchemaReplicaTypeServer) == (rType)
 }
 
-func (t *pbsproClusterSchemaReconciler) SetClusterSpec(
+func (p *pbsproClusterSchemaReconciler) SetClusterSpec(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	podTemplate *corev1.PodTemplateSpec,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
@@ -160,25 +160,25 @@ func (t *pbsproClusterSchemaReconciler) SetClusterSpec(
 	configMap *corev1.ConfigMap,
 ) error {
 
-	if err := setPodEnv(kcluster, podTemplate, t.GetDefaultContainerName(), rtype, index); err != nil {
+	if err := setPodEnv(kcluster, podTemplate, p.GetDefaultContainerName(), rtype, index); err != nil {
 		return err
 	}
 
 	if err := setInitContainer(kcluster, podTemplate, rtype); err != nil {
 		return err
 	}
-	setVolumes(podTemplate, t.GetDefaultContainerName(), rtype, configMap.Name)
+	setVolumes(podTemplate, p.GetDefaultContainerName(), rtype, configMap.Name)
 	setPodNetwork(podTemplate)
-	setCmd(kcluster, podTemplate, t.GetDefaultContainerName(), rtype)
-	setSecurity(podTemplate, t.GetDefaultContainerName(), rtype)
+	setCmd(kcluster, podTemplate, p.GetDefaultContainerName(), rtype)
+	setSecurity(podTemplate, p.GetDefaultContainerName(), rtype)
 	return nil
 }
 
-func (t *pbsproClusterSchemaReconciler) GetDefaultContainerName() string {
+func (p *pbsproClusterSchemaReconciler) GetDefaultContainerName() string {
 	return kubeclusterorgv1alpha1.ClusterDefaultContainerName
 }
 
-func (t *pbsproClusterSchemaReconciler) ValidateV1KubeCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) error {
+func (p *pbsproClusterSchemaReconciler) ValidateV1KubeCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) error {
 	for replicaType, spec := range kcluster.Spec.ClusterReplicaSpec {
 		if SchemaReplicaTypeServer != replicaType {
 			continue
