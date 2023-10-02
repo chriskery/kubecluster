@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-package torque_schema
+package pbspro_schema
 
 import (
 	"bytes"
@@ -31,7 +31,7 @@ import (
 
 var (
 	initContainerTemplate = `
-- name: init-torque
+- name: init-pbspro
   image: {{.InitContainerImage}}
   imagePullPolicy: IfNotPresent
   resources:
@@ -55,9 +55,9 @@ type initContainerGenerator struct {
 func getInitContainerGenerator() *initContainerGenerator {
 	onceInitContainer.Do(func() {
 		icGenerator = &initContainerGenerator{
-			template: getInitContainerTemplateOrDefault(config.TorqueSchemaInitContainerTemplateFile),
-			image:    config.TorqueSchemaInitContainerImage,
-			maxTries: config.TorqueSchemaInitContainerMaxTries,
+			template: getInitContainerTemplateOrDefault(config.pbsproSchemaInitContainerTemplateFile),
+			image:    config.pbsproSchemaInitContainerImage,
+			maxTries: config.pbsproSchemaInitContainerMaxTries,
 		}
 	})
 	return icGenerator

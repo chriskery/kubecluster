@@ -5,9 +5,9 @@ metadata:
     app.kubernetes.io/part-of: kubecluster
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: kubecluster
-  name: torque-ubuntu-sample
+  name: pbspro-pbspro-sample
 spec:
-  clusterType: torque
+  clusterType: pbspro
   clusterReplicaSpec:
     Server:
       replicas: 1
@@ -15,7 +15,7 @@ spec:
         spec:
           containers:
             - name: kubenode
-              image: ubuntu
+              image: pbspro/pbspro
               # Comment out the below resources to use the CPU.
               resources:
                 limits:
@@ -31,7 +31,7 @@ spec:
           containers:
             - name: kubenode
               #              image: registry.cn-hangzhou.aliyuncs.com/eflops/slurm-dev:sysbench
-              image: ubuntu
+              image: pbspro/pbspro
               resources:
                 limits:
                   memory: 2Gi

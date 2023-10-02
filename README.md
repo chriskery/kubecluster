@@ -3,28 +3,26 @@
 [![Coverage Status](https://coveralls.io/repos/github/chriskery/kubecluster/badge.svg?branch=master)](https://coveralls.io/github/chriskery/kubecluster?branch=master)
 [![Go Report Card](https://goreportcard.com/badge/github.com/chriskery/kubecluster)](https://goreportcard.com/report/github.com/chriskery/kubecluster)
 
-### The kubecluster implements a mechanism that makes it easy to build Slurm/Torque clusters on Kubernetes.
+### The kubecluster implements a mechanism that makes it easy to build Slurm/pbspro clusters on Kubernetes.
 
 ## Features
 Kubecluster uses Pods to simulate nodes in different clusters, currently supports the following cluster types :
 
 - [Slurm](pkg/controller/slurm_schema)
-- [Torque( PBS )](pkg/controller/torque_schema)
+- [PBS professional](pkg/controller/pbspro_schema)
 ## Getting Started
 You’ll need a Kubernetes cluster to run against. You can use [KIND](https://sigs.k8s.io/kind) to get a local cluster for testing, or run against a remote cluster.
 **Note:** Your controller will automatically use the current context in your kubeconfig file (i.e. whatever cluster `kubectl cluster-info` shows).
 
 ## Installation
 
-### Master Branch
-
-```bash
+```sh
 kubectl apply -k "github.com/chriskery/kubecluster/manifests/default"
 ```
 
 ## Quick Start
 
-Please refer to the [quick-start.md](docs/quick-start.md) and [Kubeflow Training User Guide](https://www.kubeflow.org/docs/guides/components/tftraining/) for more information.
+Please refer to the [quick-start.md](docs/quick-start.md)  for more information.
 
 
 ### How it works
