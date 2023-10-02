@@ -75,7 +75,7 @@ func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
-	spec *kubeclusterorgv1alpha1.ReplicaSpec,
+	_ *kubeclusterorgv1alpha1.ReplicaSpec,
 ) {
 
 	status := clusterStatus.ReplicaStatuses[rtype]
@@ -86,13 +86,8 @@ func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 	failed := status.Failed
 
 	if rtype == SchemaReplicaTypeServer {
-		var msg string
-		if running == 0 && failed == 0 {
-			msg = fmt.Sprintf("KubeCLuster %s is running.", kcluster.GetName())
-		} else if running > 0 {
-			msg = fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
-		}
-		if len(msg) != 0 {
+		if running > 0 {
+			msg := fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
 			util.UpdateClusterConditions(
 				clusterStatus,
 				kubeclusterorgv1alpha1.ClusterRunning,
@@ -129,7 +124,6 @@ func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 			if rtype != SchemaReplicaTypeServer {
 				util.LoggerForCluster(kcluster).Infof("KubeCLuster %s/%s continues regardless %d  %s replica(p) failed .",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
-
 			} else {
 				msg := fmt.Sprintf("KubeCLuster %s/%s has failed because %d %s replica(p) failed.",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
@@ -146,9 +140,9 @@ func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 }
 
 func (p *pbsproClusterSchemaReconciler) IsController(
-	spec map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
+	_ map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
 	rType kubeclusterorgv1alpha1.ReplicaType,
-	index int) bool {
+	_ int) bool {
 	return (SchemaReplicaTypeServer) == (rType)
 }
 

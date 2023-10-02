@@ -33,8 +33,7 @@ const (
 	EmptyVolumeMountPathInInitContainer = "/mnt/share"
 	EmptyVolumeMountPathInMainContainer = SlurmConfDir
 
-	ConfigureShellFile = "configure.sh"
-	ConfigureShellPath = EmptyVolumeMountPathInMainContainer
+	EntrypointFilePath = "/tmp/entrypoint.sh"
 )
 
 func NewSlurmClusterReconciler(_ context.Context, mgr ctrl.Manager) (common.ClusterSchemaReconciler, error) {
@@ -77,27 +76,18 @@ func (s *slurmClusterSchemaReconciler) UpdateClusterStatus(
 	// Generate the label selector.
 	//status.Selector = metav1.FormatLabelSelector(r.GenLabelSelector(pytorchjob.Name, rtype))
 
-	specReplicas := *spec.Replicas
 	running := status.Active
 	failed := status.Failed
-	expected := specReplicas - running
 
 	if rtype == SchemaReplicaTypeController {
-		var msg string
-		if expected == 0 {
-			msg = fmt.Sprintf("KubeCLuster %s is running.", kcluster.GetName())
-		} else if running > 0 {
-			msg = fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
-		}
-		if len(msg) != 0 {
-			util.UpdateClusterConditions(
-				clusterStatus,
-				kubeclusterorgv1alpha1.ClusterRunning,
-				corev1.ConditionTrue,
-				util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterRunningReason),
-				msg,
-			)
-		}
+		msg := fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
+		util.UpdateClusterConditions(
+			clusterStatus,
+			kubeclusterorgv1alpha1.ClusterRunning,
+			corev1.ConditionTrue,
+			util.NewReason(kubeclusterorgv1alpha1.KubeClusterKind, util.ClusterRunningReason),
+			msg,
+		)
 	}
 
 	if failed > 0 {
@@ -167,9 +157,9 @@ func (s *slurmClusterSchemaReconciler) SetClusterSpec(
 	if err = setInitContainer(kcluster, podTemplate, rtype, index, slurmctlPort, slurmdPort); err != nil {
 		return err
 	}
-	setVolumes(podTemplate, s.GetDefaultContainerName(), configMap.Name)
+	setVolumes(podTemplate, s.GetDefaultContainerName(), rtype, configMap.Name)
 	setPodNetwork(podTemplate)
-	setCmd(podTemplate, s.GetDefaultContainerName(), rtype)
+	setCmd(podTemplate, s.GetDefaultContainerName())
 	setSecurity(podTemplate, s.GetDefaultContainerName(), rtype)
 	return nil
 }
