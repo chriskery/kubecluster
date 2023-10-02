@@ -73,6 +73,63 @@ func (s *slurmClusterSchemaReconciler) getHostNetWorkNodeList(kcluster *kubeclus
 	return hostNetWorkNodeList
 }
 
+const entrypointShellTemplate = `#!/bin/bash
+
+addUserIfNotExist(){
+  if id -u "$1" >/dev/null 2>&1; then
+     echo "$1 exists"
+  else
+     echo "create user $1"
+     useradd "$1"
+  fi
+}
+addUserIfNotExist slurm
+addUserIfNotExist munge
+
+mkdir -p /etc/munge
+chown  munge:munge /etc/munge
+# shellcheck disable=SC2024
+
+##cp  relative cmd
+
+# shellcheck disable=SC2162
+read -p "please input slurm relative cmd source dir :" cmddir
+
+if [ ! -d "$cmddir" ]; then
+   echo "$cmddir not exist, skip cp  slurm relative cmd"
+   exit 0;
+fi
+
+
+cp  -p -L "$cmddir"/slurm/bin/* /usr/bin
+cp  -p -L "$cmddir"/slurm/sbin/* /usr/sbin
+cp  -p -L "$cmddir"/munge/bin/* /usr/bin
+cp  -p -L "$cmddir"/munge/sbin/* /usr/sbin
+if [ ! -e /etc/munge/munge.key ];then
+  cp  -p -L "$cmddir"/munge/munge/munge.key /etc/munge/munge.key
+fi
+#dd if=/dev/urandom bs=1 count=1024 > /etc/munge/munge.key
+
+# shellcheck disable=SC2024
+echo "$cmddir/slurm/lib"  >> /etc/ld.so.conf.d/slurm-x86_64.conf
+# shellcheck disable=SC2024
+echo "$cmddir/slurm/lib/slurm" >> /etc/ld.so.conf.d/slurm-x86_64.conf
+# shellcheck disable=SC2024
+echo "$cmddir/munge/lib" >>  /etc/ld.so.conf.d/munge-x86_64.conf
+
+ldconfig
+
+chown munge:munge /etc/munge/munge.key
+chmod 400 /etc/munge/munge.key
+mkdir -p /var/lib/munge
+mkdir -p /var/run/munge
+mkdir -p /var/log/munge
+chown -R munge:munge /var/lib/munge
+chown -R munge:munge /var/run/munge
+chown -R munge:munge /var/log/munge
+
+echo "configure completed"`
+
 func (s *slurmClusterSchemaReconciler) ReconcileConfigMap(kcluster *kubeclusterorgv1alpha1.KubeCluster, configMap *corev1.ConfigMap) error {
 	slurmConf, exists := configMap.Data[slurmConfKey]
 	if exists {
@@ -94,18 +151,22 @@ func (s *slurmClusterSchemaReconciler) ReconcileConfigMap(kcluster *kubeclustero
 	if configMap.BinaryData == nil {
 		configMap.BinaryData = make(map[string][]byte)
 	}
-	slurmctlPort, slurmdPort, err := getSlurmPortsFromSpec(kcluster, s.GetDefaultContainerName())
-	if err != nil {
-		slurmctlPort, slurmdPort = genSlurmRandomPort()
-		s.Recorder.Eventf(kcluster, corev1.EventTypeNormal, "SlurmPortsNotSet", fmt.Sprintf("Will use defaul slurmctld's port:%d, slurmd's port : %d", slurmctlPort, slurmdPort))
+	_, exists = configMap.Data[controllerEntrypoint]
+	if !exists {
+		configMap.Data[controllerEntrypoint] = s.genControllerEntrypoint()
 	}
-	s.setSlurmPorts(kcluster, slurmctlPort, slurmdPort)
-
-	slurmConf, err = s.createSlurmConf(kcluster, slurmctlPort, slurmdPort)
-	if err != nil {
-		return fmt.Errorf("generateSlurmConfig err:%v", err)
+	_, exists = configMap.Data[workerEntrypoint]
+	if !exists {
+		configMap.Data[workerEntrypoint] = s.genWorkerEntrypoint()
 	}
-	configMap.Data[slurmConfKey] = slurmConf
+	_, exists = configMap.Data[slurmConfKey]
+	if !exists {
+		slurmConf, err := s.genSlurmConf(kcluster)
+		if err != nil {
+			return err
+		}
+		configMap.Data[slurmConfKey] = slurmConf
+	}
 
 	hostNetWorkNodeList := s.getHostNetWorkNodeList(kcluster)
 	if len(hostNetWorkNodeList) == 0 {
@@ -114,7 +175,10 @@ func (s *slurmClusterSchemaReconciler) ReconcileConfigMap(kcluster *kubeclustero
 		configMap.Data[configMapReadyKey] = "false"
 		configMap.Data[hostNetWorkNodesListKey] = strings.Join(hostNetWorkNodeList, ",")
 	}
-	configMap.BinaryData[mungeKey] = genMungeKey()
+	_, exists = configMap.Data[mungeKey]
+	if !exists {
+		configMap.BinaryData[mungeKey] = genMungeKey()
+	}
 	return nil
 }
 
@@ -131,7 +195,7 @@ func (s *slurmClusterSchemaReconciler) needReconcileConfigMap(configMap *corev1.
 	}
 }
 
-func (s *slurmClusterSchemaReconciler) createSlurmConfPartitions(kcluster *kubeclusterorgv1alpha1.KubeCluster) string {
+func (s *slurmClusterSchemaReconciler) createSlurmConfPartitions(_ *kubeclusterorgv1alpha1.KubeCluster) string {
 	partitions := "################################################\n#                  PARTITIONS                  #\n################################################\n"
 	partitions += "PartitionName=all Nodes=ALL Default=YES MaxTime=INFINITE State=UP\n"
 	return partitions
@@ -216,7 +280,10 @@ const (
 	mungeKeylenInInt        = 1024
 	configMapReadyKey       = "ready"
 	configMapReady          = "true"
+	configMapReadyFile      = "/tmp/configmap-ready"
 	hostNetWorkNodesListKey = "hostNetWorkNodesList"
+	controllerEntrypoint    = "controller-entrypoint"
+	workerEntrypoint        = "worker-entrypoint"
 )
 
 func (s *slurmClusterSchemaReconciler) UpdateConfigMap(kcluster *kubeclusterorgv1alpha1.KubeCluster, configMap *corev1.ConfigMap) error {
@@ -289,4 +356,58 @@ func (s *slurmClusterSchemaReconciler) UpdateConfigMap(kcluster *kubeclusterorgv
 		configMap.Data[configMapReadyKey] = configMapReady
 	}
 	return nil
+}
+
+func (s *slurmClusterSchemaReconciler) genControllerEntrypoint() string {
+	genGrepCommand := ">> /tmp/gres.conf && for (( i=0; i < 8; i++ )) do if [ -a /dev/nvidia${i} ]; then echo \"Name=gpu Type=%s File=/dev/nvidia${i}\" >> /tmp/gres.conf; fi ; done"
+	//TODO:(support gpu type)
+	genGrepCommand = fmt.Sprintf(genGrepCommand, "gpu")
+	cpGrepsCommand := fmt.Sprintf("cp /tmp/gres.conf %s ", SlurmConfDir)
+
+	entrypointShell := fmt.Sprintf("%s\n%s\n", entrypointShellTemplate, strings.Join([]string{genGrepCommand, cpGrepsCommand}, " && "))
+	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, "sleep 5")
+
+	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, fmt.Sprintf("echo \"clear spool-cluster-name: %s/clustername \" && rm -rf %s/clustername", spoolDir, spoolDir))
+	mungedCMd := fmt.Sprintf("echo \"starting munged\" && munged -f --key-file %s --log-file %s --pid-file %s --seed-file %s --socket %s && echo \"munged started\" ",
+		"/etc/munge/munge.key", "/var/log/munge/munged.log", "/var/run/munge/munged.pid", "/var/lib/munge/munge.seed", "/var/run/munge/munge.socket.2")
+	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, mungedCMd)
+	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, "echo \"starting slurmctld\" && slurmctld -D && echo \"slurmctld started\"")
+
+	//TODO:shound we need controller to participate computing?
+	//cmds = append(cmds, "echo \"starting slurmd\" && slurmd -D ")
+	return entrypointShell
+}
+
+func (s *slurmClusterSchemaReconciler) genWorkerEntrypoint() string {
+	genGrepCommand := ">> /tmp/gres.conf && for (( i=0; i < 8; i++ )) do if [ -a /dev/nvidia${i} ]; then echo \"Name=gpu Type=%s File=/dev/nvidia${i}\" >> /tmp/gres.conf; fi ; done"
+	//TODO:(support gpu type)
+	genGrepCommand = fmt.Sprintf(genGrepCommand, "gpu")
+	cpGrepsCommand := fmt.Sprintf("cp /tmp/gres.conf %s ", SlurmConfDir)
+
+	entrypointShell := fmt.Sprintf("%s\n%s\n", entrypointShellTemplate, strings.Join([]string{genGrepCommand, cpGrepsCommand}, " && "))
+	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, "sleep 30")
+
+	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, fmt.Sprintf("echo \"clear spool-cluster-name: %s/clustername \" && rm -rf %s/clustername", spoolDir, spoolDir))
+	mungedCMd := fmt.Sprintf("echo \"starting munged\" && munged -f --key-file %s --log-file %s --pid-file %s --seed-file %s --socket %s && echo \"munged started\" ",
+		"/etc/munge/munge.key", "/var/log/munge/munged.log", "/var/run/munge/munged.pid", "/var/lib/munge/munge.seed", "/var/run/munge/munge.socket.2")
+	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, mungedCMd)
+	entrypointShell = fmt.Sprintf("%s\n%s\n", entrypointShell, "echo \"starting slurmd\" && slurmd -D ")
+
+	return entrypointShell
+
+}
+
+func (s *slurmClusterSchemaReconciler) genSlurmConf(kcluster *kubeclusterorgv1alpha1.KubeCluster) (string, error) {
+	slurmctlPort, slurmdPort, err := getSlurmPortsFromSpec(kcluster, s.GetDefaultContainerName())
+	if err != nil {
+		slurmctlPort, slurmdPort = genSlurmRandomPort()
+		s.Recorder.Eventf(kcluster, corev1.EventTypeNormal, "SlurmPortsNotSet", fmt.Sprintf("Will use defaul slurmctld's port:%d, slurmd's port : %d", slurmctlPort, slurmdPort))
+	}
+	s.setSlurmPorts(kcluster, slurmctlPort, slurmdPort)
+
+	slurmConf, err := s.createSlurmConf(kcluster, slurmctlPort, slurmdPort)
+	if err != nil {
+		return "", fmt.Errorf("generateSlurmConfig err:%v", err)
+	}
+	return slurmConf, nil
 }
