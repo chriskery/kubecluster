@@ -32,16 +32,16 @@ import (
 )
 
 const (
-	// FailedCreateServiceReason is added in an event and in a job controller condition
-	// when a service for a job is failed to be created.
+	// FailedCreateServiceReason is added in an event and in a cluster controller condition
+	// when a service for a cluster is failed to be created.
 	FailedCreateServiceReason = "FailedCreateService"
-	// SuccessfulCreateServiceReason is added in an event when a service for a job
+	// SuccessfulCreateServiceReason is added in an event when a service for a cluster
 	// is successfully created.
 	SuccessfulCreateServiceReason = "SuccessfulCreateService"
-	// FailedDeleteServiceReason is added in an event and in a job condition
-	// when a service for a job is failed to be deleted.
+	// FailedDeleteServiceReason is added in an event and in a cluster condition
+	// when a service for a cluster is failed to be deleted.
 	FailedDeleteServiceReason = "FailedDeleteService"
-	// SuccessfulDeleteServiceReason is added in an event when a service for a job
+	// SuccessfulDeleteServiceReason is added in an event when a service for a cluster
 	// is successfully deleted.
 	SuccessfulDeleteServiceReason = "SuccessfulDeleteService"
 )

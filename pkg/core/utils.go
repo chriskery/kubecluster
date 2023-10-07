@@ -27,7 +27,7 @@ func MaxInt(x, y int) int {
 	return x
 }
 
-func GenGeneralName(jobName string, rtype string, index string) string {
-	n := jobName + "-" + strings.ToLower(rtype) + "-" + index
+func GenGeneralName(clusterName string, rtype string, index string) string {
+	n := clusterName + "-" + strings.ToLower(rtype) + "-" + index
 	return strings.Replace(n, "/", "-", -1)
 }

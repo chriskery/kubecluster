@@ -33,16 +33,16 @@ import (
 
 // Reasons for pod events
 const (
-	// FailedCreatePodReason is added in an event and in a job condition
+	// FailedCreatePodReason is added in an event and in a cluster condition
 	// when a pod for a replica set is failed to be created.
 	FailedCreatePodReason = "FailedCreatePod"
-	// SuccessfulCreatePodReason is added in an event when a pod for a job
+	// SuccessfulCreatePodReason is added in an event when a pod for a cluster
 	// is successfully created.
 	SuccessfulCreatePodReason = "SuccessfulCreatePod"
-	// FailedDeletePodReason is added in an event and in a job condition
+	// FailedDeletePodReason is added in an event and in a cluster condition
 	// when a pod for a replica set is failed to be deleted.
 	FailedDeletePodReason = "FailedDeletePod"
-	// SuccessfulDeletePodReason is added in an event when a pod for a job
+	// SuccessfulDeletePodReason is added in an event when a pod for a cluster
 	// is successfully deleted.
 	SuccessfulDeletePodReason = "SuccessfulDeletePod"
 )

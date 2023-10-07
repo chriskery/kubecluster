@@ -15,12 +15,10 @@
 package ctrlcommon
 
 import (
-	"fmt"
 	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	schedulingv1 "k8s.io/api/scheduling/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sort"
 )
 
@@ -43,30 +41,6 @@ func (p ReplicasPriority) Less(i, j int) bool {
 
 func (p ReplicasPriority) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
-}
-
-// RecheckDeletionTimestamp returns a CanAdopt() function to recheck deletion.
-//
-// The CanAdopt() function calls getObject() to fetch the latest value,
-// and denies adoption attempts if that object has a non-nil DeletionTimestamp.
-func RecheckDeletionTimestamp(getObject func() (metav1.Object, error)) func() error {
-	return func() error {
-		obj, err := getObject()
-		if err != nil {
-			return fmt.Errorf("can't recheck DeletionTimestamp: %v", err)
-		}
-		if obj.GetDeletionTimestamp() != nil {
-			return fmt.Errorf("%v/%v has just been deleted at %v", obj.GetNamespace(), obj.GetName(), obj.GetDeletionTimestamp())
-		}
-		return nil
-	}
-}
-
-func MaxInt(x, y int) int {
-	if x < y {
-		return y
-	}
-	return x
 }
 
 func AddResourceList(list, req, limit v1.ResourceList) {

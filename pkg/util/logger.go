@@ -24,52 +24,52 @@ import (
 	metav1unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-func LoggerForReplica(job metav1.Object, rtype kubeclusterorgv1alpha1.ReplicaType) *log.Entry {
+func LoggerForReplica(cluster metav1.Object, rtype kubeclusterorgv1alpha1.ReplicaType) *log.Entry {
 	return log.WithFields(log.Fields{
-		// We use job to match the key used in controller.go
+		// We use cluster to match the key used in controller.go
 		// Its more common in K8s to use a period to indicate namespace.name. So that's what we use.
-		"job":          job.GetNamespace() + "." + job.GetName(),
-		"uid":          job.GetUID(),
+		"cluster":      cluster.GetNamespace() + "." + cluster.GetName(),
+		"uid":          cluster.GetUID(),
 		"replica-type": rtype,
 	})
 }
 
-func LoggerForCluster(job metav1.Object) *log.Entry {
+func LoggerForCluster(cluster metav1.Object) *log.Entry {
 	return log.WithFields(log.Fields{
-		// We use job to match the key used in controller.go
+		// We use cluster to match the key used in controller.go
 		// Its more common in K8s to use a period to indicate namespace.name. So that's what we use.
-		"job": job.GetNamespace() + "." + job.GetName(),
-		"uid": job.GetUID(),
+		"cluster": cluster.GetNamespace() + "." + cluster.GetName(),
+		"uid":     cluster.GetUID(),
 	})
 }
 
 func LoggerForPod(pod *v1.Pod, kind string) *log.Entry {
-	job := ""
+	cluster := ""
 	if controllerRef := metav1.GetControllerOf(pod); controllerRef != nil {
 		if controllerRef.Kind == kind {
-			job = pod.Namespace + "." + controllerRef.Name
+			cluster = pod.Namespace + "." + controllerRef.Name
 		}
 	}
 	return log.WithFields(log.Fields{
-		// We use job to match the key used in controller.go
+		// We use cluster to match the key used in controller.go
 		// In controller.go we log the key used with the workqueue.
-		"job": job,
-		"pod": pod.Namespace + "." + pod.Name,
-		"uid": pod.ObjectMeta.UID,
+		"cluster": cluster,
+		"pod":     pod.Namespace + "." + pod.Name,
+		"uid":     pod.ObjectMeta.UID,
 	})
 }
 
 func LoggerForService(svc *v1.Service, kind string) *log.Entry {
-	job := ""
+	cluster := ""
 	if controllerRef := metav1.GetControllerOf(svc); controllerRef != nil {
 		if controllerRef.Kind == kind {
-			job = svc.Namespace + "." + controllerRef.Name
+			cluster = svc.Namespace + "." + controllerRef.Name
 		}
 	}
 	return log.WithFields(log.Fields{
-		// We use job to match the key used in controller.go
+		// We use cluster to match the key used in controller.go
 		// In controller.go we log the key used with the workqueue.
-		"job":     job,
+		"cluster": cluster,
 		"service": svc.Namespace + "." + svc.Name,
 		"uid":     svc.ObjectMeta.UID,
 	})
@@ -83,7 +83,7 @@ func LoggerForConfigMap(cm *v1.ConfigMap, kind string) *log.Entry {
 		}
 	}
 	return log.WithFields(log.Fields{
-		// We use job to match the key used in controller.go
+		// We use cluster to match the key used in controller.go
 		// In controller.go we log the key used with the workqueue.
 		"kcluster":  kcluster,
 		"configMap": cm.Namespace + "." + cm.Name,
@@ -95,19 +95,19 @@ func LoggerForKey(key string) *log.Entry {
 	return log.WithFields(log.Fields{
 		// The key used by the workQueue should be namespace + "/" + name.
 		// Its more common in K8s to use a period to indicate namespace.name. So that's what we use.
-		"job": strings.Replace(key, "/", ".", -1),
+		"cluster": strings.Replace(key, "/", ".", -1),
 	})
 }
 
 func LoggerForUnstructured(obj *metav1unstructured.Unstructured, kind string) *log.Entry {
-	job := ""
+	cluster := ""
 	if obj.GetKind() == kind {
-		job = obj.GetNamespace() + "." + obj.GetName()
+		cluster = obj.GetNamespace() + "." + obj.GetName()
 	}
 	return log.WithFields(log.Fields{
-		// We use job to match the key used in controller.go
+		// We use cluster to match the key used in controller.go
 		// In controller.go we log the key used with the workqueue.
-		"job": job,
-		"uid": obj.GetUID(),
+		"cluster": cluster,
+		"uid":     obj.GetUID(),
 	})
 }

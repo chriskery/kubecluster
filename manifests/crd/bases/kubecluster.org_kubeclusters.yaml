@@ -54,7 +54,7 @@ spec:
                       format: int32
                       type: integer
                     restartPolicy:
-                      description: Restart policy for all replicas within the job.
+                      description: Restart policy for all replicas within the cluster.
                         One of Always, OnFailure, Never and ExitCode. Default to Never.
                       type: string
                     template:
@@ -8173,8 +8173,8 @@ spec:
                 type: string
               runPolicy:
                 description: '`RunPolicy` encapsulates various runtime policies of
-                  the distributed training job, for example how to clean up resources
-                  and how long the job can stay active.'
+                  the distributed training cluster, for example how to clean up resources
+                  and how long the cluster can stay active.'
                 properties:
                   CleanKubeNodePolicy:
                     description: CleanKubeNodePolicy defines the policy to kill pods
@@ -8235,9 +8235,9 @@ spec:
             description: ClusterStatus defines the observed state of KubeCluster
             properties:
               completionTime:
-                description: Represents time when the job was completed. It is not
-                  guaranteed to be set in happens-before order across separate operations.
-                  It is represented in RFC3339 form and is in UTC.
+                description: Represents time when the cluster was completed. It is
+                  not guaranteed to be set in happens-before order across separate
+                  operations. It is represented in RFC3339 form and is in UTC.
                 format: date-time
                 type: string
               conditions:

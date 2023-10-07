@@ -4,28 +4,28 @@ import "flag"
 
 // Config is the global configuration for the training operator.
 var config struct {
-	SlurmSchemaInitContainerTemplateFile string
-	SlurmSchemaInitContainerImage        string
-	SlurmSchemaInitContainerMaxTries     int
+	slurmSchemaInitContainerTemplateFile string
+	slurmSchemaInitContainerImage        string
+	slurmSchemaInitContainerMaxTries     int
 }
 
 const (
-	// SlurmSchemaInitContainerImageDefault is the default image for the SlurmSchema
+	// slurmSchemaInitContainerImageDefault is the default image for the SlurmSchema
 	// init container.
-	SlurmSchemaInitContainerImageDefault = "registry.cn-shanghai.aliyuncs.com/eflops-bcp/slurm-minimal:v1"
-	// SlurmSchemaInitContainerTemplateFileDefault is the default template file for
+	slurmSchemaInitContainerImageDefault = "registry.cn-shanghai.aliyuncs.com/eflops-bcp/slurm-minimal:v1"
+	// slurmSchemaInitContainerTemplateFileDefault is the default template file for
 	// the SlurmSchema init container.
-	SlurmSchemaInitContainerTemplateFileDefault = "/etc/config/initContainer.yaml"
-	// SlurmSchemaInitContainerMaxTriesDefault is the default number of tries for the SlurmSchema init container.
-	SlurmSchemaInitContainerMaxTriesDefault = 100
+	slurmSchemaInitContainerTemplateFileDefault = "/etc/config/initContainer.yaml"
+	// slurmSchemaInitContainerMaxTriesDefault is the default number of tries for the SlurmSchema init container.
+	slurmSchemaInitContainerMaxTriesDefault = 100
 )
 
 func init() {
 	// SlurmSchema related flags
-	flag.StringVar(&config.SlurmSchemaInitContainerImage, "SlurmSchema-init-container-image",
-		SlurmSchemaInitContainerImageDefault, "The image for SlurmSchema init container")
-	flag.StringVar(&config.SlurmSchemaInitContainerTemplateFile, "SlurmSchema-init-container-template-file",
-		SlurmSchemaInitContainerTemplateFileDefault, "The template file for SlurmSchema init container")
-	flag.IntVar(&config.SlurmSchemaInitContainerMaxTries, "SlurmSchema-init-container-max-tries",
-		SlurmSchemaInitContainerMaxTriesDefault, "The number of tries for the SlurmSchema init container")
+	flag.StringVar(&config.slurmSchemaInitContainerImage, "SlurmSchema-init-container-image",
+		slurmSchemaInitContainerImageDefault, "The image for SlurmSchema init container")
+	flag.StringVar(&config.slurmSchemaInitContainerTemplateFile, "SlurmSchema-init-container-template-file",
+		slurmSchemaInitContainerTemplateFileDefault, "The template file for SlurmSchema init container")
+	flag.IntVar(&config.slurmSchemaInitContainerMaxTries, "SlurmSchema-init-container-max-tries",
+		slurmSchemaInitContainerMaxTriesDefault, "The number of tries for the SlurmSchema init container")
 }

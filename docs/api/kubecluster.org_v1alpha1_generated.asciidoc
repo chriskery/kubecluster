@@ -82,7 +82,7 @@ ClusterSpec defines the desired state of KubeCluster
 | *`clusterType`* __ClusterType__ | ClusterType define the type of the cluster to be created
 | *`clusterReplicaSpec`* __object (keys:xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-replicatype[$$ReplicaType$$], values:xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-replicaspec[$$ReplicaSpec$$])__ | ClusterType define the template of the cluster to be created
 | *`mainContainer`* __string__ | MainContainer specifies name of the main container which run as kubenode.
-| *`runPolicy`* __xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-runpolicy[$$RunPolicy$$]__ | `RunPolicy` encapsulates various runtime policies of the distributed training job, for example how to clean up resources and how long the job can stay active.
+| *`runPolicy`* __xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-runpolicy[$$RunPolicy$$]__ | `RunPolicy` encapsulates various runtime policies of the distributed training cluster, for example how to clean up resources and how long the cluster can stay active.
 |===
 
 
@@ -103,7 +103,7 @@ ClusterStatus defines the observed state of KubeCluster
 | *`replicaStatuses`* __object (keys:xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-replicatype[$$ReplicaType$$], values:xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-replicastatus[$$ReplicaStatus$$])__ | ReplicaStatuses is map of ReplicaType and ReplicaStatus, specifies the status of each replica.
 | *`startTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#time-v1-meta[$$Time$$]__ | Represents time when the KubeCluster was acknowledged by the KubeCluster controller. It is not guaranteed to be set in happens-before order across separate operations. It is represented in RFC3339 form and is in UTC.
 | *`lastReconcileTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#time-v1-meta[$$Time$$]__ | Represents last time when the KubeCluster was reconciled. It is not guaranteed to be set in happens-before order across separate operations. It is represented in RFC3339 form and is in UTC.
-| *`completionTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#time-v1-meta[$$Time$$]__ | Represents time when the job was completed. It is not guaranteed to be set in happens-before order across separate operations. It is represented in RFC3339 form and is in UTC.
+| *`completionTime`* __link:https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.22/#time-v1-meta[$$Time$$]__ | Represents time when the cluster was completed. It is not guaranteed to be set in happens-before order across separate operations. It is represented in RFC3339 form and is in UTC.
 |===
 
 
@@ -164,7 +164,7 @@ ReplicaSpec is a description of the replica
 | Field | Description
 | *`replicas`* __integer__ | Replicas is the desired number of replicas of the given template. If unspecified, defaults to 1.
 | *`template`* __xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-replicatemplate[$$ReplicaTemplate$$]__ | Template is the object that describes the pod that will be created for this replica. RestartPolicy in PodTemplateSpec will be overide by RestartPolicy in ReplicaSpec
-| *`restartPolicy`* __xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-restartpolicy[$$RestartPolicy$$]__ | Restart policy for all replicas within the job. One of Always, OnFailure, Never and ExitCode. Default to Never.
+| *`restartPolicy`* __xref:{anchor_prefix}-github-com-chriskery-kubecluster-apis-kubecluster-org-v1alpha1-restartpolicy[$$RestartPolicy$$]__ | Restart policy for all replicas within the cluster. One of Always, OnFailure, Never and ExitCode. Default to Never.
 |===
 
 

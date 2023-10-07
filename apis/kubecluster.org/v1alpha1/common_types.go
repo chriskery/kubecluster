@@ -72,7 +72,7 @@ type ReplicaSpec struct {
 	// will be overide by RestartPolicy in ReplicaSpec
 	Template ReplicaTemplate `json:"template"`
 
-	// Restart policy for all replicas within the job.
+	// Restart policy for all replicas within the cluster.
 	// One of Always, OnFailure, Never and ExitCode.
 	// Default to Never.
 	RestartPolicy RestartPolicy `json:"restartPolicy,omitempty"`

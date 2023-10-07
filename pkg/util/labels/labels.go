@@ -41,21 +41,8 @@ func GenReplicaTypeLabel(rtype v1alpha1.ReplicaType) string {
 	return strings.ToLower(string(rtype))
 }
 
-func ReplicaType(labels map[string]string) (v1alpha1.ReplicaType, error) {
-	v, ok := labels[v1alpha1.ReplicaTypeLabel]
-	if !ok {
-		return "", errors.New("replica type label not found")
-	}
-	return v1alpha1.ReplicaType(v), nil
-}
-
 func SetReplicaType(labels map[string]string, rt string) {
 	labels[v1alpha1.ReplicaTypeLabel] = rt
-}
-
-func HasKnownLabels(labels map[string]string, groupName string) bool {
-	_, has := labels[v1alpha1.ControllerNameLabel]
-	return has
 }
 
 func SetClusterRole(labels map[string]string, role string) {
