@@ -74,7 +74,7 @@ func (s *slurmClusterSchemaReconciler) UpdateClusterStatus(
 
 	status := clusterStatus.ReplicaStatuses[rtype]
 	// Generate the label selector.
-	//status.Selector = metav1.FormatLabelSelector(r.GenLabelSelector(pytorchjob.Name, rtype))
+	//status.Selector = metav1.FormatLabelSelector(r.GenLabelSelector(pytorchcluster.Name, rtype))
 
 	running := status.Active
 	failed := status.Failed
@@ -91,8 +91,8 @@ func (s *slurmClusterSchemaReconciler) UpdateClusterStatus(
 	}
 
 	if failed > 0 {
-		// For the situation that jobStatus has a restarting condition, and append a running condition,
-		// the restarting condition will be removed from jobStatus by kubeflowv1.filterOutCondition(),
+		// For the situation that clusterStatus has a restarting condition, and append a running condition,
+		// the restarting condition will be removed from clusterStatus by filterOutCondition(),
 		// so we need to record the existing restarting condition for later use.
 		var existingRestartingCondition *kubeclusterorgv1alpha1.ClusterCondition
 		for _, condition := range clusterStatus.Conditions {
@@ -104,12 +104,12 @@ func (s *slurmClusterSchemaReconciler) UpdateClusterStatus(
 			}
 		}
 
-		// For the situation that jobStatus has a restarting condition, and appends a new running condition,
-		// the restarting condition will be removed from jobStatus by kubeflowv1.filterOutCondition(),
-		// so we need to append the restarting condition back to jobStatus.
+		// For the situation that clusterStatus has a restarting condition, and appends a new running condition,
+		// the restarting condition will be removed from clusterStatus by filterOutCondition(),
+		// so we need to append the restarting condition back to clusterStatus.
 		if existingRestartingCondition != nil {
 			util.UpdateClusterConditions(clusterStatus, kubeclusterorgv1alpha1.ClusterRestarting, corev1.ConditionTrue, existingRestartingCondition.Reason, existingRestartingCondition.Message)
-			// job is restarting, no need to set it failed
+			// cluster is restarting, no need to set it failed
 			// we know it because we update the status condition when reconciling the replicas
 			common.RestartedClustersCounterInc(kcluster.GetNamespace(), kcluster.Spec.ClusterType)
 		} else {
@@ -154,7 +154,7 @@ func (s *slurmClusterSchemaReconciler) SetClusterSpec(
 	if err = setPodEnv(kcluster, podTemplate, s.GetDefaultContainerName(), rtype, index, slurmctlPort, slurmdPort); err != nil {
 		return err
 	}
-	if err = setInitContainer(kcluster, podTemplate, rtype, index, slurmctlPort, slurmdPort); err != nil {
+	if err = setInitContainer(kcluster, podTemplate, rtype); err != nil {
 		return err
 	}
 	setVolumes(podTemplate, s.GetDefaultContainerName(), rtype, configMap.Name)

@@ -23,15 +23,15 @@ type ControllerInterface interface {
 	GetClusterFromInformerCache(namespace, name string) (metav1.Object, error)
 
 	// GetPodsForCluster returns the pods managed by the cluster. This can be achieved by selecting pods using label key "kubecluster-name"
-	// i.e. all pods created by the job will come with label "kubecluster-name" = <this_cluster_name>
+	// i.e. all pods created by the cluster will come with label "kubecluster-name" = <this_cluster_name>
 	GetPodsForCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) ([]*v1.Pod, error)
 
 	// GetConfigMapForCluster returns the pods managed by the cluster. This can be achieved by selecting pods using label key "kubecluster-name"
-	// i.e. all pods created by the job will come with label "kubecluster-name" = <this_cluster_name>
+	// i.e. all pods created by the cluster will come with label "kubecluster-name" = <this_cluster_name>
 	GetConfigMapForCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) (*v1.ConfigMap, error)
 
 	// GetServicesForCluster returns the services managed by the cluster. This can be achieved by selecting services using label key "kubecluster-name"
-	// i.e. all services created by the job will come with label "kubecluster-name" = <this_cluster_name>
+	// i.e. all services created by the cluster will come with label "kubecluster-name" = <this_cluster_name>
 	GetServicesForCluster(kcluster *kubeclusterorgv1alpha1.KubeCluster) ([]*v1.Service, error)
 
 	// DeleteCluster deletes the cluster
@@ -40,18 +40,16 @@ type ControllerInterface interface {
 	// UpdateClusterStatusInApiServer updates the cluster status in API server
 	UpdateClusterStatusInApiServer(kcluster metav1.Object, clusterStatus *kubeclusterorgv1alpha1.ClusterStatus) error
 
-	// UpdateClusterStatus updates the job status and job conditions
+	// UpdateClusterStatus updates the cluster status and cluster conditions
 	UpdateClusterStatus(
 		kcluster *kubeclusterorgv1alpha1.KubeCluster,
 		replicas map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
 		clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
 	) error
 
-	FilterServicesForReplicaType(services []*v1.Service, rt string) ([]*v1.Service, error)
-
 	GetServiceSlices(services []*v1.Service, replicas int, replica *log.Entry) [][]*v1.Service
 
-	// GetGroupNameLabelValue Returns the Group Name(value) in the labels of the job
+	// GetGroupNameLabelValue Returns the Group Name(value) in the labels of the cluster
 	GetGroupNameLabelValue() string
 
 	UpdateConfigMapInApiServer(metav1.Object, *v1.ConfigMap) error

@@ -34,11 +34,11 @@ import (
 
 type FillPodGroupSpecFunc func(object metav1.Object) error
 
-func (cc *ClusterController) SyncPodGroup(job metav1.Object, specFunc FillPodGroupSpecFunc) (metav1.Object, error) {
+func (cc *ClusterController) SyncPodGroup(cluster metav1.Object, specFunc FillPodGroupSpecFunc) (metav1.Object, error) {
 	pgctl := cc.PodGroupControl
 
 	// Check whether podGroup exists or not
-	podGroup, err := pgctl.GetPodGroup(job.GetNamespace(), job.GetName())
+	podGroup, err := pgctl.GetPodGroup(cluster.GetNamespace(), cluster.GetName())
 	if err == nil {
 		// update podGroup for gang scheduling
 		oldPodGroup := &podGroup
@@ -54,10 +54,10 @@ func (cc *ClusterController) SyncPodGroup(job metav1.Object, specFunc FillPodGro
 	} else {
 		// create podGroup for gang scheduling
 		newPodGroup := pgctl.NewEmptyPodGroup()
-		newPodGroup.SetName(job.GetName())
-		newPodGroup.SetNamespace(job.GetNamespace())
-		newPodGroup.SetAnnotations(job.GetAnnotations())
-		newPodGroup.SetOwnerReferences([]metav1.OwnerReference{*cc.GenOwnerReference(job)})
+		newPodGroup.SetName(cluster.GetName())
+		newPodGroup.SetNamespace(cluster.GetNamespace())
+		newPodGroup.SetAnnotations(cluster.GetAnnotations())
+		newPodGroup.SetOwnerReferences([]metav1.OwnerReference{*cc.GenOwnerReference(cluster)})
 		if err = specFunc(newPodGroup); err != nil {
 			return nil, fmt.Errorf("unable to fill the spec of PodGroup, '%v': %v", klog.KObj(newPodGroup), err)
 		}
@@ -69,7 +69,7 @@ func (cc *ClusterController) SyncPodGroup(job metav1.Object, specFunc FillPodGro
 		createdPodGroupsCount.Inc()
 	}
 
-	createdPodGroup, err := pgctl.GetPodGroup(job.GetNamespace(), job.GetName())
+	createdPodGroup, err := pgctl.GetPodGroup(cluster.GetNamespace(), cluster.GetName())
 	if err != nil {
 		return nil, fmt.Errorf("unable to get PodGroup after success creation: %v", err)
 	}
@@ -114,19 +114,19 @@ func (cc *ClusterController) SyncPdb(kcluster metav1.Object, minAvailableReplica
 	return createdPdb, nil
 }
 
-func (cc *ClusterController) DeletePodGroup(job metav1.Object) error {
+func (cc *ClusterController) DeletePodGroup(cluster metav1.Object) error {
 	pgctl := cc.PodGroupControl
 
 	// Check whether podGroup exists or not
-	_, err := pgctl.GetPodGroup(job.GetNamespace(), job.GetName())
+	_, err := pgctl.GetPodGroup(cluster.GetNamespace(), cluster.GetName())
 	if err != nil && k8serrors.IsNotFound(err) {
 		return nil
 	}
 
-	log.Infof("Deleting PodGroup %s", job.GetName())
+	log.Infof("Deleting PodGroup %s", cluster.GetName())
 
 	// Delete podGroup
-	err = pgctl.DeletePodGroup(job.GetNamespace(), job.GetName())
+	err = pgctl.DeletePodGroup(cluster.GetNamespace(), cluster.GetName())
 	if err != nil {
 		return fmt.Errorf("unable to delete PodGroup: %v", err)
 	}
@@ -134,17 +134,17 @@ func (cc *ClusterController) DeletePodGroup(job metav1.Object) error {
 	return nil
 }
 
-func (cc *ClusterController) DeletePdb(job metav1.Object) error {
+func (cc *ClusterController) DeletePdb(cluster metav1.Object) error {
 	// Check whether pdb exists or not
-	_, err := cc.KubeClientSet.PolicyV1beta1().PodDisruptionBudgets(job.GetNamespace()).Get(context.TODO(), job.GetName(), metav1.GetOptions{})
+	_, err := cc.KubeClientSet.PolicyV1beta1().PodDisruptionBudgets(cluster.GetNamespace()).Get(context.TODO(), cluster.GetName(), metav1.GetOptions{})
 	if err != nil && k8serrors.IsNotFound(err) {
 		return nil
 	}
 
-	msg := fmt.Sprintf("Deleting pdb %s", job.GetName())
+	msg := fmt.Sprintf("Deleting pdb %s", cluster.GetName())
 	log.Info(msg)
 
-	if err = cc.KubeClientSet.PolicyV1beta1().PodDisruptionBudgets(job.GetNamespace()).Delete(context.TODO(), job.GetName(), metav1.DeleteOptions{}); err != nil {
+	if err = cc.KubeClientSet.PolicyV1beta1().PodDisruptionBudgets(cluster.GetNamespace()).Delete(context.TODO(), cluster.GetName(), metav1.DeleteOptions{}); err != nil {
 		return fmt.Errorf("unable to delete pdb: %v", err)
 	}
 	deletedPDBCount.Inc()

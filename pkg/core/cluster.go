@@ -78,7 +78,7 @@ func RecordAbnormalPods(activePods []*v1.Pod, object runtime.Object, recorder re
 	}
 }
 
-// PastActiveDeadline checks if job has ActiveDeadlineSeconds field set and if it is exceeded.
+// PastActiveDeadline checks if cluster has ActiveDeadlineSeconds field set and if it is exceeded.
 func PastActiveDeadline(runPolicy *v1alpha1.RunPolicy, clusterStatus v1alpha1.ClusterStatus) bool {
 	if runPolicy.ActiveDeadlineSeconds == nil || clusterStatus.StartTime == nil {
 		return false
@@ -92,7 +92,7 @@ func PastActiveDeadline(runPolicy *v1alpha1.RunPolicy, clusterStatus v1alpha1.Cl
 
 // PastBackoffLimit checks if container restartCounts sum exceeds BackoffLimit
 // this method applies only to pods when restartPolicy is one of OnFailure, Always or ExitCode
-func PastBackoffLimit(jobName string, runPolicy *v1alpha1.RunPolicy,
+func PastBackoffLimit(clusterName string, runPolicy *v1alpha1.RunPolicy,
 	replicas map[v1alpha1.ReplicaType]*v1alpha1.ReplicaSpec, pods []*v1.Pod,
 	podFilterFunc func(pods []*v1.Pod, replicaType string) ([]*v1.Pod, error)) (bool, error) {
 	if runPolicy.BackoffLimit == nil {
@@ -103,7 +103,7 @@ func PastBackoffLimit(jobName string, runPolicy *v1alpha1.RunPolicy,
 		if spec.RestartPolicy != v1alpha1.RestartPolicyOnFailure &&
 			spec.RestartPolicy != v1alpha1.RestartPolicyAlways &&
 			spec.RestartPolicy != v1alpha1.RestartPolicyExitCode {
-			log.Warnf("The restart policy of replica %v of the job %v is not OnFailure, Always or ExitCode. Not counted in backoff limit.", rtype, jobName)
+			log.Warnf("The restart policy of replica %v of the cluster %v is not OnFailure, Always or ExitCode. Not counted in backoff limit.", rtype, clusterName)
 			continue
 		}
 		// Convert ReplicaType to lower string.

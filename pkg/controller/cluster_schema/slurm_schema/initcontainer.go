@@ -55,9 +55,9 @@ type initContainerGenerator struct {
 func getInitContainerGenerator() *initContainerGenerator {
 	onceInitContainer.Do(func() {
 		icGenerator = &initContainerGenerator{
-			template: getInitContainerTemplateOrDefault(config.SlurmSchemaInitContainerTemplateFile),
-			image:    config.SlurmSchemaInitContainerImage,
-			maxTries: config.SlurmSchemaInitContainerMaxTries,
+			template: getInitContainerTemplateOrDefault(config.slurmSchemaInitContainerTemplateFile),
+			image:    config.slurmSchemaInitContainerImage,
+			maxTries: config.slurmSchemaInitContainerMaxTries,
 		}
 	})
 	return icGenerator
@@ -108,9 +108,6 @@ func setInitContainer(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	podTemplate *corev1.PodTemplateSpec,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
-	index string,
-	port int,
-	slurmdPort int,
 ) error {
 	g := getInitContainerGenerator()
 	controllerAddress := common.GenGeneralName(kcluster.Name, SchemaReplicaTypeController, strconv.Itoa(0))
@@ -129,7 +126,6 @@ func setInitContainer(
 	}
 
 	//we only need to change tha last
-	podTemplate.Spec.InitContainers = append(podTemplate.Spec.InitContainers,
-		initContainers...)
+	podTemplate.Spec.InitContainers = append(podTemplate.Spec.InitContainers, initContainers...)
 	return nil
 }

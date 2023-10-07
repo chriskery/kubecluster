@@ -41,7 +41,7 @@ func (cc *ClusterController) ReconcileConfigMap(kcluster *v1alpha1.KubeCluster) 
 	if err = schemaReconciler.ReconcileConfigMap(kcluster, deepCopy); err != nil {
 		return nil, err
 	}
-	// No need to update the job status if the status hasn't changed since last time.
+	// No need to update the cluster status if the status hasn't changed since last time.
 	if !reflect.DeepEqual(deepCopy.Data, configMap.Data) {
 		err = cc.Controller.UpdateConfigMapInApiServer(kcluster, deepCopy)
 	}
@@ -51,7 +51,7 @@ func (cc *ClusterController) ReconcileConfigMap(kcluster *v1alpha1.KubeCluster) 
 func (cc *ClusterController) CreateNewConfigMap(kcluster *v1alpha1.KubeCluster, expectations expectation.ControllerExpectationsInterface) (*v1.ConfigMap, error) {
 	clusetrKey, err := KeyFunc(kcluster)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for job object %#v: %v", kcluster, err))
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for cluster object %#v: %v", kcluster, err))
 		return nil, err
 	}
 

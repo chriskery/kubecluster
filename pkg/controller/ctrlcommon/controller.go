@@ -26,6 +26,7 @@ import (
 	"github.com/chriskery/kubecluster/pkg/core"
 	"github.com/chriskery/kubecluster/pkg/util"
 	"github.com/chriskery/kubecluster/pkg/util/k8sutil"
+	"github.com/chriskery/kubecluster/pkg/util/misc"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
@@ -250,7 +251,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 	clusterName := metaObject.GetName()
 	clusterKind := cc.Controller.GetAPIGroupVersionKind().Kind
 	oldStatus := kcluster.Status.DeepCopy()
-	if util.IsClusterSuspended(runPolicy) {
+	if misc.IsClusterSuspended(runPolicy) {
 		if err = cc.CleanUpResources(runPolicy, runtimeObject, metaObject, kcluster.Status, pods); err != nil {
 			return err
 		}
@@ -262,7 +263,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 		if util.IsRunning(kcluster.Status) {
 			util.UpdateClusterConditions(&kcluster.Status, v1alpha1.ClusterRunning, corev1.ConditionFalse, util.NewReason(clusterKind, util.ClusterSuspendedReason), msg)
 		}
-		// We add the suspended condition to the job only when the job doesn't have a suspended condition.
+		// We add the suspended condition to the cluster only when the cluster doesn't have a suspended condition.
 		if !util.IsSuspended(kcluster.Status) {
 			util.UpdateClusterConditions(&kcluster.Status, v1alpha1.ClusterSuspended, corev1.ConditionTrue, util.NewReason(clusterKind, util.ClusterSuspendedReason), msg)
 		}
@@ -298,11 +299,11 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 	prevReplicasFailedNum := k8sutil.GetTotalFailedReplicas(kcluster.Status.ReplicaStatuses)
 
 	if runPolicy.BackoffLimit != nil {
-		jobHasNewFailure := failed > prevReplicasFailedNum
+		clusterHasNewFailure := failed > prevReplicasFailedNum
 		// new failures happen when status does not reflect the failures and active
 		// is different than parallelism, otherwise the previous controller loop
 		// failed updating status so even if we pick up failure it is not a new one
-		exceedsBackoffLimit = jobHasNewFailure && (active != totalReplicas) &&
+		exceedsBackoffLimit = clusterHasNewFailure && (active != totalReplicas) &&
 			(int32(previousRetry)+1 > *runPolicy.BackoffLimit)
 
 		pastBackoffLimit, err = cc.PastBackoffLimit(clusterName, runPolicy, kcluster.Spec.ClusterReplicaSpec, pods)
@@ -313,7 +314,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 
 	if exceedsBackoffLimit || pastBackoffLimit {
 		// check if the number of pod restart exceeds backoff (for restart OnFailure only)
-		// OR if the number of failed jobs increased since the last syncCluster
+		// OR if the number of failed clusters increased since the last syncCluster
 		clusterExceedsLimit = true
 		failureMessage = fmt.Sprintf("KubeCLuster %s has failed because it has reached the specified backoff limit", clusterName)
 	} else if cc.PastActiveDeadline(runPolicy, kcluster.Status) {
@@ -427,7 +428,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 			now := metav1.Now()
 			kcluster.Status.LastReconcileTime = &now
 
-			// Update job status here to trigger a new reconciliation
+			// Update cluster status here to trigger a new reconciliation
 			return cc.Controller.UpdateClusterStatusInApiServer(metaObject, &kcluster.Status)
 		}
 	}
@@ -458,7 +459,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 		log.Warnf("UpdateClusterStatus error %v", err)
 		return err
 	}
-	// No need to update the job status if the status hasn't changed since last time.
+	// No need to update the cluster status if the status hasn't changed since last time.
 	if !reflect.DeepEqual(*oldStatus, &kcluster.Status) {
 		return cc.Controller.UpdateClusterStatusInApiServer(metaObject, &kcluster.Status)
 	}
@@ -469,7 +470,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 		log.Warnf("UpdateClusterStatus error %v", err)
 		return err
 	}
-	// No need to update the job status if the status hasn't changed since last time.
+	// No need to update the cluster status if the status hasn't changed since last time.
 	if !reflect.DeepEqual(configMapDeepCopy.Data, configMap.Data) {
 		return cc.Controller.UpdateConfigMapInApiServer(metaObject, configMapDeepCopy)
 	}
@@ -480,21 +481,26 @@ func (cc *ClusterController) calcPGMinResources(minMember int32, replicas map[v1
 	return CalcPGMinResources(minMember, replicas, cc.PriorityClassLister.Get)
 }
 
-// PastActiveDeadline checks if job has ActiveDeadlineSeconds field set and if it is exceeded.
+// PastActiveDeadline checks if cluster has ActiveDeadlineSeconds field set and if it is exceeded.
 func (cc *ClusterController) PastActiveDeadline(runPolicy *v1alpha1.RunPolicy, clusterStatus v1alpha1.ClusterStatus) bool {
 	return core.PastActiveDeadline(runPolicy, clusterStatus)
 }
 
 // PastBackoffLimit checks if container restartCounts sum exceeds BackoffLimit
 // this method applies only to pods when restartPolicy is one of OnFailure, Always or ExitCode
-func (cc *ClusterController) PastBackoffLimit(jobName string, runPolicy *v1alpha1.RunPolicy,
+func (cc *ClusterController) PastBackoffLimit(clusterName string, runPolicy *v1alpha1.RunPolicy,
 	replicas map[v1alpha1.ReplicaType]*v1alpha1.ReplicaSpec, pods []*corev1.Pod) (bool, error) {
-	return core.PastBackoffLimit(jobName, runPolicy, replicas, pods, cc.FilterPodsForReplicaType)
+	return core.PastBackoffLimit(clusterName, runPolicy, replicas, pods, cc.FilterPodsForReplicaType)
 }
 
 // FilterPodsForReplicaType returns pods belong to a replicaType.
 func (cc *ClusterController) FilterPodsForReplicaType(pods []*corev1.Pod, replicaType string) ([]*corev1.Pod, error) {
 	return core.FilterPodsForReplicaType(pods, replicaType)
+}
+
+// FilterServicesForReplicaType returns service belong to a replicaType.
+func (cc *ClusterController) FilterServicesForReplicaType(services []*corev1.Service, replicaType string) ([]*corev1.Service, error) {
+	return core.FilterServicesForReplicaType(services, replicaType)
 }
 
 // recordAbnormalPods records the active pod whose latest condition is not in True status.
@@ -565,7 +571,7 @@ func (cc *ClusterController) DeletePodAndServices(runtimeObject runtime.Object, 
 		return nil
 	}
 
-	// Delete nothing when the cleanPodPolicy is None and the job has Succeeded or Failed condition.
+	// Delete nothing when the cleanPodPolicy is None and the cluster has Succeeded or Failed condition.
 	if util.IsFinished(clusterStatus) && *runPolicy.CleanKubeNodePolicy == v1alpha1.CleanKubeNodePolicyNone {
 		return nil
 	}

@@ -48,7 +48,7 @@ type PodGroupControlInterface interface {
 	DelayPodCreationDueToPodGroup(pg metav1.Object) bool
 	// DecoratePodTemplateSpec decorates PodTemplateSpec.
 	// If the PodTemplateSpec has SchedulerName set, this method will Not override.
-	DecoratePodTemplateSpec(pts *corev1.PodTemplateSpec, job metav1.Object, rtype string)
+	DecoratePodTemplateSpec(pts *corev1.PodTemplateSpec, cluster metav1.Object, rtype string)
 	// GetSchedulerName returns the name of the gang scheduler.
 	GetSchedulerName() string
 }
@@ -62,14 +62,14 @@ func (v *VolcanoControl) GetSchedulerName() string {
 	return "volcano"
 }
 
-func (v *VolcanoControl) DecoratePodTemplateSpec(pts *corev1.PodTemplateSpec, job metav1.Object, rtype string) {
+func (v *VolcanoControl) DecoratePodTemplateSpec(pts *corev1.PodTemplateSpec, cluster metav1.Object, rtype string) {
 	if len(pts.Spec.SchedulerName) == 0 {
 		pts.Spec.SchedulerName = v.GetSchedulerName()
 	}
 	if pts.Annotations == nil {
 		pts.Annotations = make(map[string]string)
 	}
-	pts.Annotations[volcanov1beta1.KubeGroupNameAnnotationKey] = job.GetName()
+	pts.Annotations[volcanov1beta1.KubeGroupNameAnnotationKey] = cluster.GetName()
 	pts.Annotations[volcanobatchv1alpha1.TaskSpecKey] = rtype
 }
 
@@ -128,7 +128,7 @@ type SchedulerPluginsControl struct {
 	SchedulerName string
 }
 
-func (s *SchedulerPluginsControl) DecoratePodTemplateSpec(pts *corev1.PodTemplateSpec, job metav1.Object, _ string) {
+func (s *SchedulerPluginsControl) DecoratePodTemplateSpec(pts *corev1.PodTemplateSpec, cluster metav1.Object, _ string) {
 	if len(pts.Spec.SchedulerName) == 0 {
 		pts.Spec.SchedulerName = s.GetSchedulerName()
 	}
@@ -136,7 +136,7 @@ func (s *SchedulerPluginsControl) DecoratePodTemplateSpec(pts *corev1.PodTemplat
 	if pts.Labels == nil {
 		pts.Labels = make(map[string]string)
 	}
-	pts.Labels[schedulerpluginsv1alpha1.PodGroupLabel] = job.GetName()
+	pts.Labels[schedulerpluginsv1alpha1.PodGroupLabel] = cluster.GetName()
 }
 
 func (s *SchedulerPluginsControl) GetSchedulerName() string {

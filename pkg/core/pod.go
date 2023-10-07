@@ -76,7 +76,7 @@ func CalculatePodSliceSize(pods []*v1.Pod, replicas int) int {
 	return MaxInt(size+1, replicas)
 }
 
-// SetRestartPolicy check the RestartPolicy defined in job spec and overwrite RestartPolicy in podTemplate if necessary
+// SetRestartPolicy check the RestartPolicy defined in cluster spec and overwrite RestartPolicy in podTemplate if necessary
 func SetRestartPolicy(podTemplateSpec *v1.PodTemplateSpec, spec *kubeclusterorgv1alpha1.ReplicaSpec) {
 	// This is necessary since restartPolicyExitCode is not supported in v1.PodTemplateSpec
 	if spec.RestartPolicy == kubeclusterorgv1alpha1.RestartPolicyExitCode {
