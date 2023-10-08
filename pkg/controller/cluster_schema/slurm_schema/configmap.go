@@ -54,7 +54,7 @@ var (
 		"TaskPlugin=task/none \n" +
 		"################################################\n#                  ACCOUNTING                  #\n################################################\n" +
 		"AccountingStorageType=accounting_storage/none \n" +
-		"clusterAcctGatherType=clusteracct_gather/none \n" +
+		"jobAcctGatherType=jobacct_gather/none \n" +
 		"GresTypes=gpu \n"
 	resourceTypeGpu = "gpu"
 )
