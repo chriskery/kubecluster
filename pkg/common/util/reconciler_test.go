@@ -1,0 +1,59 @@
+package util
+
+import (
+	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
+	"github.com/chriskery/kubecluster/pkg/controller/expectation"
+	"testing"
+
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+)
+
+func TestOnDependentXXXFunc(t *testing.T) {
+
+	createfunc := onDependentCreateFunc(expectation.NewControllerExpectations())
+	deletefunc := onDependentDeleteFunc(expectation.NewControllerExpectations())
+
+	for _, testCase := range []struct {
+		object client.Object
+		expect bool
+	}{
+		{
+			// pod object with label is allowed
+			object: &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						v1alpha1.ReplicaTypeLabel: "Worker",
+					},
+				},
+			},
+			expect: true,
+		},
+		{
+			// service object without label is not allowed
+			object: &corev1.Service{},
+			expect: false,
+		},
+		{
+			// objects other than pod/service are not allowed
+			object: &corev1.ConfigMap{},
+			expect: false,
+		},
+	} {
+		ret := createfunc(event.CreateEvent{
+			Object: testCase.object,
+		})
+		if ret != testCase.expect {
+			t.Errorf("expect %t, but get %t", testCase.expect, ret)
+		}
+		ret = deletefunc(event.DeleteEvent{
+			Object: testCase.object,
+		})
+		if ret != testCase.expect {
+			t.Errorf("expect %t, but get %t", testCase.expect, ret)
+		}
+
+	}
+}

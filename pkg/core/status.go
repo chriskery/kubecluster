@@ -22,27 +22,27 @@ import (
 )
 
 // InitializeReplicaStatuses initializes the ReplicaStatuses for replica.
-func InitializeReplicaStatuses(jobStatus *kubeclusterorgv1alpha1.ClusterStatus, rtype kubeclusterorgv1alpha1.ReplicaType) {
-	if jobStatus.ReplicaStatuses == nil {
-		jobStatus.ReplicaStatuses = make(map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaStatus)
+func InitializeReplicaStatuses(clusterStatus *kubeclusterorgv1alpha1.ClusterStatus, rtype kubeclusterorgv1alpha1.ReplicaType) {
+	if clusterStatus.ReplicaStatuses == nil {
+		clusterStatus.ReplicaStatuses = make(map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaStatus)
 	}
 
-	jobStatus.ReplicaStatuses[rtype] = &kubeclusterorgv1alpha1.ReplicaStatus{}
+	clusterStatus.ReplicaStatuses[rtype] = &kubeclusterorgv1alpha1.ReplicaStatus{}
 }
 
 // UpdateClusterReplicaStatuses updates the ClusterReplicaStatuses according to the pod.
-func UpdateClusterReplicaStatuses(jobStatus *kubeclusterorgv1alpha1.ClusterStatus, rtype kubeclusterorgv1alpha1.ReplicaType, pod *corev1.Pod) {
+func UpdateClusterReplicaStatuses(clusterStatus *kubeclusterorgv1alpha1.ClusterStatus, rtype kubeclusterorgv1alpha1.ReplicaType, pod *corev1.Pod) {
 	switch pod.Status.Phase {
 	case corev1.PodRunning:
 		if pod.DeletionTimestamp != nil {
 			// when node is not ready, the pod will be in terminating state.
 			// Count deleted Pods as failures to account for orphan Pods that
 			// never have a chance to reach the Failed phase.
-			jobStatus.ReplicaStatuses[rtype].Failed++
+			clusterStatus.ReplicaStatuses[rtype].Failed++
 		} else {
-			jobStatus.ReplicaStatuses[rtype].Active++
+			clusterStatus.ReplicaStatuses[rtype].Active++
 		}
 	case corev1.PodFailed:
-		jobStatus.ReplicaStatuses[rtype].Failed++
+		clusterStatus.ReplicaStatuses[rtype].Failed++
 	}
 }

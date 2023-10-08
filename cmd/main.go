@@ -67,7 +67,7 @@ func main() {
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
-	flag.Var(&enabledSchemes, "enable-scheme", "Enable scheme(s) as --enable-scheme=tfjob --enable-scheme=pytorchjob, case insensitive."+
+	flag.Var(&enabledSchemes, "enable-scheme", "Enable scheme(s) as --enable-scheme=tfcluster --enable-scheme=pytorchcluster, case insensitive."+
 		" Now supporting TFCluster, PyTorchCluster, MXNetCluster, XGBoostCluster, PaddleCluster. By default, all supported schemes will be enabled.")
 	flag.IntVar(&controllerThreads, "controller-threads", 1, "Number of worker threads used by the controller.")
 	flag.StringVar(&gangSchedulerName, "gang-scheduler-name", "", "Now Supporting volcano and scheduler-plugins."+
@@ -137,7 +137,7 @@ func setupController(mgr ctrl.Manager, enabledSchemes cluster_schema.EnabledSche
 
 	reconciler := controller.NewReconciler(mgr, gangSchedulingSetupFunc)
 
-	// TODO: We need a general manager. all rest ctrlutil addsToManager
+	// TODO: We need a general manager. all rest util addsToManager
 	// Based on the user configuration, we start different controllers
 	if enabledSchemes.Empty() {
 		enabledSchemes.FillAll()

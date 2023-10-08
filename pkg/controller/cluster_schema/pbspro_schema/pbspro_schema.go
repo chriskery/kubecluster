@@ -75,24 +75,19 @@ func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 	kcluster *kubeclusterorgv1alpha1.KubeCluster,
 	clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,
 	rtype kubeclusterorgv1alpha1.ReplicaType,
-	spec *kubeclusterorgv1alpha1.ReplicaSpec,
+	_ *kubeclusterorgv1alpha1.ReplicaSpec,
 ) {
 
 	status := clusterStatus.ReplicaStatuses[rtype]
 	// Generate the label selector.
-	//status.Selector = metav1.FormatLabelSelector(r.GenLabelSelector(pytorchjob.Name, rtype))
+	//status.Selector = metav1.FormatLabelSelector(r.GenLabelSelector(pytorchcluster.Name, rtype))
 
 	running := status.Active
 	failed := status.Failed
 
 	if rtype == SchemaReplicaTypeServer {
-		var msg string
-		if running == 0 && failed == 0 {
-			msg = fmt.Sprintf("KubeCLuster %s is running.", kcluster.GetName())
-		} else if running > 0 {
-			msg = fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
-		}
-		if len(msg) != 0 {
+		if running > 0 {
+			msg := fmt.Sprintf("KubeCLuster %s is avtivating.", kcluster.GetName())
 			util.UpdateClusterConditions(
 				clusterStatus,
 				kubeclusterorgv1alpha1.ClusterRunning,
@@ -104,8 +99,8 @@ func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 	}
 
 	if failed > 0 {
-		// For the situation that jobStatus has a restarting condition, and append a running condition,
-		// the restarting condition will be removed from jobStatus by kubeflowv1.filterOutCondition(),
+		// For the situation that clusterStatus has a restarting condition, and append a running condition,
+		// the restarting condition will be removed from clusterStatus by filterOutCondition(),
 		// so we need to record the existing restarting condition for later use.
 		var existingRestartingCondition *kubeclusterorgv1alpha1.ClusterCondition
 		for _, condition := range clusterStatus.Conditions {
@@ -117,19 +112,18 @@ func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 			}
 		}
 
-		// For the situation that jobStatus has a restarting condition, and appends a new running condition,
-		// the restarting condition will be removed from jobStatus by kubeflowv1.filterOutCondition(),
-		// so we need to append the restarting condition back to jobStatus.
+		// For the situation that clusterStatus has a restarting condition, and appends a new running condition,
+		// the restarting condition will be removed from clusterStatus by filterOutCondition(),
+		// so we need to append the restarting condition back to clusterStatus.
 		if existingRestartingCondition != nil {
 			util.UpdateClusterConditions(clusterStatus, kubeclusterorgv1alpha1.ClusterRestarting, corev1.ConditionTrue, existingRestartingCondition.Reason, existingRestartingCondition.Message)
-			// job is restarting, no need to set it failed
+			// cluster is restarting, no need to set it failed
 			// we know it because we update the status condition when reconciling the replicas
 			common.RestartedClustersCounterInc(kcluster.GetNamespace(), kcluster.Spec.ClusterType)
 		} else {
 			if rtype != SchemaReplicaTypeServer {
 				util.LoggerForCluster(kcluster).Infof("KubeCLuster %s/%s continues regardless %d  %s replica(p) failed .",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
-
 			} else {
 				msg := fmt.Sprintf("KubeCLuster %s/%s has failed because %d %s replica(p) failed.",
 					kcluster.Namespace, kcluster.Name, failed, rtype)
@@ -146,9 +140,9 @@ func (p *pbsproClusterSchemaReconciler) UpdateClusterStatus(
 }
 
 func (p *pbsproClusterSchemaReconciler) IsController(
-	spec map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
+	_ map[kubeclusterorgv1alpha1.ReplicaType]*kubeclusterorgv1alpha1.ReplicaSpec,
 	rType kubeclusterorgv1alpha1.ReplicaType,
-	index int) bool {
+	_ int) bool {
 	return (SchemaReplicaTypeServer) == (rType)
 }
 

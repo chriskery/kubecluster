@@ -9,8 +9,8 @@ import (
 )
 
 func ValidateV1alphaCluster(cluster *KubeCluster) error {
-	if errors := apimachineryvalidation.NameIsDNS1035Label(cluster.ObjectMeta.Name, false); errors != nil {
-		return fmt.Errorf("TFCluster name is invalid: %v", errors)
+	if errs := apimachineryvalidation.NameIsDNS1035Label(cluster.ObjectMeta.Name, false); errs != nil {
+		return fmt.Errorf("TFCluster name is invalid: %v", errs)
 	}
 	if err := validateV1alphaClusterSpecs(cluster.Spec); err != nil {
 		return err
@@ -22,7 +22,7 @@ func validateV1alphaClusterSpecs(spec ClusterSpec) error {
 	if len(spec.ClusterType) == 0 {
 		return fmt.Errorf("KubeCluster is not valid: cluster type expected")
 	}
-	if spec.ClusterReplicaSpec == nil {
+	if len(spec.ClusterReplicaSpec) == 0 {
 		return fmt.Errorf("KubeCluster is not valid")
 	}
 	defaultContainerName := ClusterDefaultContainerName

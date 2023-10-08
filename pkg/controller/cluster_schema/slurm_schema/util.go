@@ -159,7 +159,7 @@ func setPodNetwork(template *corev1.PodTemplateSpec) {
 	template.Spec.DNSPolicy = corev1.DNSClusterFirstWithHostNet
 }
 
-func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, configMapName string) {
+func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, rtype kubeclusterorgv1alpha1.ReplicaType, configMapName string) {
 	defaultConfigMapMode := int32(0777)
 	template.Spec.Volumes = append(template.Spec.Volumes, corev1.Volume{
 		Name: configMapName,
@@ -190,6 +190,12 @@ func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, c
 			MountPath: EmptyVolumeMountPathInInitContainer,
 			ReadOnly:  false,
 		})
+		template.Spec.InitContainers[i].VolumeMounts = append(template.Spec.InitContainers[i].VolumeMounts, corev1.VolumeMount{
+			Name:      configMapName,
+			MountPath: configMapReadyFile,
+			SubPath:   configMapReadyKey,
+		})
+
 	}
 	for i := range template.Spec.Containers {
 		if template.Spec.Containers[i].Name != defaultContainerName {
@@ -211,6 +217,19 @@ func setVolumes(template *corev1.PodTemplateSpec, defaultContainerName string, c
 			MountPath: fmt.Sprintf("%s/munge/munge/%s", SlurmConfDir, mungeKey),
 			SubPath:   mungeKey,
 		})
+		if rtype == SchemaReplicaTypeController {
+			template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+				Name:      configMapName,
+				MountPath: EntrypointFilePath,
+				SubPath:   controllerEntrypoint,
+			})
+		} else {
+			template.Spec.Containers[i].VolumeMounts = append(template.Spec.Containers[i].VolumeMounts, corev1.VolumeMount{
+				Name:      configMapName,
+				MountPath: EntrypointFilePath,
+				SubPath:   workerEntrypoint,
+			})
+		}
 	}
 
 }
@@ -228,8 +247,7 @@ func setSecurity(podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName s
 	}
 }
 
-func setCmd(podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName string, rtype kubeclusterorgv1alpha1.ReplicaType) {
-	configureCmd := fmt.Sprintf("%s/%s <<< %s", ConfigureShellPath, ConfigureShellFile, EmptyVolumeMountPathInMainContainer)
+func setCmd(podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName string) {
 	for i := range podTemplateSpec.Spec.Containers {
 		if podTemplateSpec.Spec.Containers[i].Name != defaultContainerName {
 			continue
@@ -237,45 +255,6 @@ func setCmd(podTemplateSpec *corev1.PodTemplateSpec, defaultContainerName string
 		if podTemplateSpec.Spec.Containers[i].Command == nil {
 			podTemplateSpec.Spec.Containers[i].Command = make([]string, 0)
 		}
-		if rtype == SchemaReplicaTypeController {
-			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", fmt.Sprintf("%s && sleep 30 && %s ", configureCmd, genControllerCommand())}
-		} else {
-			podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", fmt.Sprintf("%s && %s ", configureCmd, genWorkerCommand())}
-		}
+		podTemplateSpec.Spec.Containers[i].Command = []string{"/bin/bash", "-c", fmt.Sprintf("%s <<< %s", EntrypointFilePath, EmptyVolumeMountPathInMainContainer)}
 	}
-}
-
-func genControllerCommand() string {
-	genGrepCommand := ">> /tmp/gres.conf && for (( i=0; i < 8; i++ )) do if [ -a /dev/nvidia${i} ]; then echo \"Name=gpu Type=%s File=/dev/nvidia${i}\" >> /tmp/gres.conf; fi ; done"
-	//TODO:(support gpu type)
-	genGrepCommand = fmt.Sprintf(genGrepCommand, "gpu")
-	cpGrepsCommand := fmt.Sprintf("cp /tmp/gres.conf %s ", SlurmConfDir)
-	var cmds []string
-	cmds = append(cmds, genGrepCommand)
-	cmds = append(cmds, cpGrepsCommand)
-	cmds = append(cmds, "sleep 5")
-	cmds = append(cmds, fmt.Sprintf("echo \"clear spool-cluster-name: %s/clustername \" && rm -rf %s/clustername", spoolDir, spoolDir))
-	mungedCMd := fmt.Sprintf("echo \"starting munged\" && munged -f --key-file %s --log-file %s --pid-file %s --seed-file %s --socket %s && echo \"munged started\" ",
-		"/etc/munge/munge.key", "/var/log/munge/munged.log", "/var/run/munge/munged.pid", "/var/lib/munge/munge.seed", "/var/run/munge/munge.socket.2")
-	cmds = append(cmds, mungedCMd)
-	cmds = append(cmds, "echo \"starting slurmctld\" && slurmctld -D && echo \"slurmctld started\"")
-	//TODO:shound we need controller to participate computing?
-	//cmds = append(cmds, "echo \"starting slurmd\" && slurmd -D ")
-	return strings.Join(cmds, " && ")
-}
-
-func genWorkerCommand() string {
-	genGrepCommand := ">> /tmp/gres.conf && for (( i=0; i < 8; i++ )) do if [ -a /dev/nvidia${i} ]; then echo \"Name=gpu Type=%s File=/dev/nvidia${i}\" >> /tmp/gres.conf; fi ; done"
-	//TODO:(support gpu type)
-	genGrepCommand = fmt.Sprintf(genGrepCommand, "gpu")
-	cpGrepsCommand := fmt.Sprintf("cp /tmp/gres.conf %s ", SlurmConfDir)
-	var cmds []string
-	cmds = append(cmds, genGrepCommand)
-	cmds = append(cmds, cpGrepsCommand)
-	cmds = append(cmds, "sleep 30")
-	mungedCMd := fmt.Sprintf("echo \"starting munged\" && munged -f --key-file %s --log-file %s --pid-file %s --seed-file %s --socket %s && echo \"munged started\" ",
-		"/etc/munge/munge.key", "/var/log/munge/munged.log", "/var/run/munge/munged.pid", "/var/lib/munge/munge.seed", "/var/run/munge/munge.socket.2")
-	cmds = append(cmds, mungedCMd)
-	cmds = append(cmds, "echo \"starting slurmd\" && slurmd -D ")
-	return strings.Join(cmds, " && ")
 }

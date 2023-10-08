@@ -28,7 +28,7 @@ func NewReason(kind, reason string) string {
 	return fmt.Sprintf("%s%s", kind, reason)
 }
 
-// IsFinished checks if the job is succeeded or failed
+// IsFinished checks if the cluster is succeeded or failed
 func IsFinished(status v1alpha1.ClusterStatus) bool {
 	return IsFailed(status)
 }

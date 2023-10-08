@@ -42,7 +42,7 @@ func SetDefaultRestartPolicy(replicaSpec *ReplicaSpec, defaultRestartPolicy Rest
 	}
 }
 
-func SetDefaultReplicas(replicaSpec *ReplicaSpec, replicas int32) {
+func setDefaultReplicas(replicaSpec *ReplicaSpec, replicas int32) {
 	if replicaSpec != nil && replicaSpec.Replicas == nil {
 		replicaSpec.Replicas = pointer.Int32(replicas)
 	}

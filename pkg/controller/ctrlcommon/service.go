@@ -37,7 +37,7 @@ func (cc *ClusterController) CreateNewService(
 	expectations expectation.ControllerExpectationsInterface) error {
 	clusetrKey, err := KeyFunc(kcluster)
 	if err != nil {
-		utilruntime.HandleError(fmt.Errorf("couldn't get key for job object %#v: %v", kcluster, err))
+		utilruntime.HandleError(fmt.Errorf("couldn't get key for cluster object %#v: %v", kcluster, err))
 		return err
 	}
 
@@ -181,7 +181,7 @@ func (cc *ClusterController) ReconcilePods(
 				// Deletion is expected
 				schemaReconciler.RaiseExpectations(expectationPodsKey, 0, 1)
 
-				msg := fmt.Sprintf("job %s is restarting because %s replica(s) failed.",
+				msg := fmt.Sprintf("cluster %s is restarting because %s replica(s) failed.",
 					kcluster.GetName(), rType)
 				cc.Recorder.Event(kcluster, corev1.EventTypeWarning, util.NewReason(clusterKind, util.ClusterRestartingReason), msg)
 				util.UpdateClusterConditions(&kcluster.Status, kubeclusterorgv1alpha1.ClusterRestarting,
@@ -205,7 +205,7 @@ func (cc *ClusterController) ReconcileServices(
 	// Convert ReplicaType to lower string.
 	replicas := int(*spec.Replicas)
 	// Get all services for the type rt.
-	services, err := cc.Controller.FilterServicesForReplicaType(services, utillabels.GenReplicaTypeLabel(rtype))
+	services, err := cc.FilterServicesForReplicaType(services, utillabels.GenReplicaTypeLabel(rtype))
 	if err != nil {
 		return err
 	}

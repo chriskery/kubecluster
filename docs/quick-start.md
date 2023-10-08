@@ -86,7 +86,7 @@ pbspro-centos-sample-cpu-0
      sharing = default_shared
      last_state_change_time = Thu Sep 28 07:05:43 2023
 ```
-Switch to the normal user and submit the job using [qsub](https://www.jlab.org/hpc/PBS/qsub.html)
+Switch to the normal user and submit the cluster using [qsub](https://www.jlab.org/hpc/PBS/qsub.html)
 ```shell
 [root@pbspro-centos-sample-server-0 /]# useradd pbsexample
 [root@pbspro-centos-sample-server-0 /]# su pbsexample
@@ -94,13 +94,13 @@ Switch to the normal user and submit the job using [qsub](https://www.jlab.org/h
 2.pbspro-centos-sample-server-0
 [pbsexample@pbspro-centos-sample-server-0 /]$
 ```
-Use [qstat](https://docs.adaptivecomputing.com/torque/4-0-2/Content/topics/commands/qstat.htm) to view the job we just submitted
+Use [qstat](https://docs.adaptivecomputing.com/torque/4-0-2/Content/topics/commands/qstat.htm) to view the cluster we just submitted
 ```
 [pbsexample@pbspro-centos-sample-server-0 /]$ qstat -a
 
 pbspro-centos-sample-server-0: 
                                                             Req'd  Req'd   Elap
-Job ID          Username Queue    Jobname    SessID NDS TSK Memory Time  S Time
+cluster ID          Username Queue    clustername    SessID NDS TSK Memory Time  S Time
 --------------- -------- -------- ---------- ------ --- --- ------ ----- - -----
 2.pbspro-centos pbsexamp workq    STDIN        1377   1   1    --    --  E 00:00
 ```

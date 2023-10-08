@@ -34,14 +34,14 @@ func ConvertServiceList(list []corev1.Service) []*corev1.Service {
 	return ret
 }
 
-// KubeClusterControlledPodList filter pod list owned by the job.
-func KubeClusterControlledPodList(list []corev1.Pod, job metav1.Object) []*corev1.Pod {
+// KubeClusterControlledPodList filter pod list owned by the cluster.
+func KubeClusterControlledPodList(list []corev1.Pod, cluster metav1.Object) []*corev1.Pod {
 	if list == nil {
 		return nil
 	}
 	ret := make([]*corev1.Pod, 0, len(list))
 	for i := range list {
-		if !metav1.IsControlledBy(&list[i], job) {
+		if !metav1.IsControlledBy(&list[i], cluster) {
 			continue
 		}
 		ret = append(ret, &list[i])

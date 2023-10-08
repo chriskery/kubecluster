@@ -35,7 +35,7 @@ type ClusterSchemaReconciler interface {
 		index int,
 	) bool
 
-	// UpdateClusterStatus updates the job status and job conditions
+	// UpdateClusterStatus updates the cluster status and cluster conditions
 	UpdateClusterStatus(
 		kcluster *kubeclusterorgv1alpha1.KubeCluster,
 		clusterStatus *kubeclusterorgv1alpha1.ClusterStatus,

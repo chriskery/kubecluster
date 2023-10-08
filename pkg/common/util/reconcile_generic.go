@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-package ctrlutil
+package util
 
 import (
 	"fmt"
 	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
-	common2 "github.com/chriskery/kubecluster/pkg/common"
+	"github.com/chriskery/kubecluster/pkg/common"
 	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema"
 	"github.com/chriskery/kubecluster/pkg/controller/ctrlcommon"
 	"reflect"
@@ -29,30 +29,30 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
-// GenExpectationGenericKey generates an expectation key for {Kind} of a job
+// GenExpectationGenericKey generates an expectation key for {Kind} of a cluster
 func GenExpectationGenericKey(clusterKey string, replicaType string, pl string) string {
 	return clusterKey + "/" + strings.ToLower(replicaType) + "/" + pl
 }
 
 // LoggerForGenericKind generates log entry for generic Kubernetes resource Kind
 func LoggerForGenericKind(obj metav1.Object, kind string) *log.Entry {
-	job := ""
+	cluster := ""
 	if controllerRef := metav1.GetControllerOf(obj); controllerRef != nil {
 		if controllerRef.Kind == kind {
-			job = obj.GetNamespace() + "." + controllerRef.Name
+			cluster = obj.GetNamespace() + "." + controllerRef.Name
 		}
 	}
 	return log.WithFields(log.Fields{
-		// We use job to match the key used in controller.go
+		// We use cluster to match the key used in controller.go
 		// In controller.go we log the key used with the workqueue.
-		"job": job,
-		kind:  obj.GetNamespace() + "." + obj.GetName(),
-		"uid": obj.GetUID(),
+		"cluster": cluster,
+		kind:      obj.GetNamespace() + "." + obj.GetName(),
+		"uid":     obj.GetUID(),
 	})
 }
 
 // OnDependentCreateFuncGeneric modify expectations when dependent (pod/service) creation observed.
-func OnDependentCreateFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSchema]common2.ClusterSchemaReconciler) func(event.CreateEvent) bool {
+func OnDependentCreateFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSchema]common.ClusterSchemaReconciler) func(event.CreateEvent) bool {
 	return func(e event.CreateEvent) bool {
 		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
 		if len(clusterType) == 0 {
@@ -101,7 +101,7 @@ func OnDependentUpdateFuncGeneric(jc *ctrlcommon.ClusterController) func(updateE
 
 		if controllerRefChanged && oldControllerRef != nil {
 			// The ControllerRef was changed. Sync the old controller, if any.
-			if job := resolveControllerRef(jc, oldObj.GetNamespace(), oldControllerRef); job != nil {
+			if cluster := resolveControllerRef(jc, oldObj.GetNamespace(), oldControllerRef); cluster != nil {
 				logger.Infof("%s controller ref updated: %v, %v", kind, newObj, oldObj)
 				return true
 			}
@@ -109,8 +109,8 @@ func OnDependentUpdateFuncGeneric(jc *ctrlcommon.ClusterController) func(updateE
 
 		// If it has a controller ref, that's all that matters.
 		if newControllerRef != nil {
-			job := resolveControllerRef(jc, newObj.GetNamespace(), newControllerRef)
-			if job == nil {
+			cluster := resolveControllerRef(jc, newObj.GetNamespace(), newControllerRef)
+			if cluster == nil {
 				return false
 			}
 			logger.Debugf("%s has a controller ref: %v, %v", kind, newObj, oldObj)
@@ -121,7 +121,7 @@ func OnDependentUpdateFuncGeneric(jc *ctrlcommon.ClusterController) func(updateE
 }
 
 // OnDependentDeleteFuncGeneric modify expectations when dependent (pod/service) deletion observed.
-func OnDependentDeleteFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSchema]common2.ClusterSchemaReconciler) func(event.DeleteEvent) bool {
+func OnDependentDeleteFuncGeneric(schemaReconcilers map[cluster_schema.ClusterSchema]common.ClusterSchemaReconciler) func(event.DeleteEvent) bool {
 	return func(e event.DeleteEvent) bool {
 		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
 		if len(clusterType) == 0 {

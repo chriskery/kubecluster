@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
 	"github.com/chriskery/kubecluster/pkg/common"
+	util3 "github.com/chriskery/kubecluster/pkg/common/util"
 	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema"
 	"github.com/chriskery/kubecluster/pkg/controller/control"
 	"github.com/chriskery/kubecluster/pkg/controller/ctrlcommon"
-	"github.com/chriskery/kubecluster/pkg/controller/ctrlutil"
 	"github.com/chriskery/kubecluster/pkg/core"
 	"github.com/chriskery/kubecluster/pkg/util"
 	utillabels "github.com/chriskery/kubecluster/pkg/util/labels"
@@ -98,7 +98,7 @@ func NewReconciler(mgr manager.Manager, gangSchedulingSetupFunc ctrlcommon.GangS
 		ServiceControl:              control.RealServiceControl{KubeClient: kubeClientSet, Recorder: r.recorder},
 		ConfigMapControl:            control.RealConfigMapControl{KubeClient: kubeClientSet, Recorder: r.recorder},
 		SchemaReconcilerManager:     make(map[cluster_schema.ClusterSchema]common.ClusterSchemaReconciler),
-		WorkQueue:                   &ctrlutil.FakeWorkQueue{},
+		WorkQueue:                   &util3.FakeWorkQueue{},
 	}
 
 	gangSchedulingSetupFunc(&r.ClusterController)
@@ -139,7 +139,7 @@ func (r *KubeClusterReconciler) UpdateClusterStatusInApiServer(
 	}
 	common.ClearGeneratedFields(&kcluster.ObjectMeta)
 
-	// Cluster status passed in differs with status in job, update in basis of the passed in one.
+	// Cluster status passed in differs with status in cluster, update in basis of the passed in one.
 	if !equality.Semantic.DeepEqual(&kcluster.Status, clusterStatus) {
 		kcluster = kcluster.DeepCopy()
 		kcluster.Status = *clusterStatus.DeepCopy()
@@ -175,9 +175,9 @@ func (r *KubeClusterReconciler) UpdateClusterStatus(
 	if clusterStatus.StartTime == nil {
 		now := metav1.Now()
 		clusterStatus.StartTime = &now
-		// clusterStatus a sync to check if job past ActiveDeadlineSeconds
+		// clusterStatus a sync to check if cluster past ActiveDeadlineSeconds
 		if kcluster.Spec.RunPolicy.ActiveDeadlineSeconds != nil {
-			logger.Infof("Job with ActiveDeadlineSeconds will sync after %d seconds", *kcluster.Spec.RunPolicy.ActiveDeadlineSeconds)
+			logger.Infof("cluster with ActiveDeadlineSeconds will sync after %d seconds", *kcluster.Spec.RunPolicy.ActiveDeadlineSeconds)
 			r.WorkQueue.AddAfter(clusterKey, time.Duration(*kcluster.Spec.RunPolicy.ActiveDeadlineSeconds)*time.Second)
 		}
 	}
@@ -274,7 +274,7 @@ func (r *KubeClusterReconciler) needReconcile(kcluster *v1alpha1.KubeCluster, sc
 		utilruntime.HandleError(fmt.Errorf("couldn't get clusterKey for kubecluster object %#v: %v", kcluster, err))
 	}
 	replicaTypes := common.GetReplicaTypes(kcluster.Spec.ClusterReplicaSpec)
-	needReconcile := !ctrlutil.SatisfiedExpectations(schemaReconciler, clusterKey, replicaTypes)
+	needReconcile := !util3.SatisfiedExpectations(schemaReconciler, clusterKey, replicaTypes)
 	return needReconcile
 }
 
@@ -298,28 +298,28 @@ func (r *KubeClusterReconciler) SetupWithManager(mgr ctrl.Manager, controllerThr
 	// eventHandler for owned objects
 	eventHandler := handler.EnqueueRequestForOwner(mgr.GetScheme(), mgr.GetRESTMapper(), &v1alpha1.KubeCluster{}, handler.OnlyControllerOwner())
 	predicates := predicate.Funcs{
-		CreateFunc: ctrlutil.OnDependentCreateFunc(r.SchemaReconcilerManager),
-		UpdateFunc: ctrlutil.OnDependentUpdateFunc(&r.ClusterController),
-		DeleteFunc: ctrlutil.OnDependentDeleteFunc(r.SchemaReconcilerManager),
+		CreateFunc: util3.OnDependentCreateFunc(r.SchemaReconcilerManager),
+		UpdateFunc: util3.OnDependentUpdateFunc(&r.ClusterController),
+		DeleteFunc: util3.OnDependentDeleteFunc(r.SchemaReconcilerManager),
 	}
 	// Create generic predicates
 	genericPredicates := predicate.Funcs{
-		CreateFunc: ctrlutil.OnDependentCreateFuncGeneric(r.SchemaReconcilerManager),
-		UpdateFunc: ctrlutil.OnDependentUpdateFuncGeneric(&r.ClusterController),
-		DeleteFunc: ctrlutil.OnDependentDeleteFuncGeneric(r.SchemaReconcilerManager),
+		CreateFunc: util3.OnDependentCreateFuncGeneric(r.SchemaReconcilerManager),
+		UpdateFunc: util3.OnDependentUpdateFuncGeneric(&r.ClusterController),
+		DeleteFunc: util3.OnDependentDeleteFuncGeneric(r.SchemaReconcilerManager),
 	}
-	// inject watching for job related pod
+	// inject watching for cluster related pod
 	if err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Pod{}), eventHandler, predicates); err != nil {
 		return err
 	}
-	// inject watching for job related service
+	// inject watching for cluster related service
 	if err = c.Watch(source.Kind(mgr.GetCache(), &corev1.Service{}), eventHandler, predicates); err != nil {
 		return err
 	}
 	// skip watching volcano PodGroup if volcano PodGroup is not installed
 	if _, err = mgr.GetRESTMapper().RESTMapping(schema.GroupKind{Group: v1beta1.GroupName, Kind: "PodGroup"},
 		v1beta1.SchemeGroupVersion.Version); err == nil {
-		// inject watching for job related volcano PodGroup
+		// inject watching for cluster related volcano PodGroup
 		if err = c.Watch(source.Kind(mgr.GetCache(), &v1beta1.PodGroup{}), eventHandler, genericPredicates); err != nil {
 			return err
 		}
@@ -327,7 +327,7 @@ func (r *KubeClusterReconciler) SetupWithManager(mgr ctrl.Manager, controllerThr
 	// skip watching scheduler-plugins PodGroup if scheduler-plugins PodGroup is not installed
 	if _, err = mgr.GetRESTMapper().RESTMapping(schema.GroupKind{Group: schedulerpluginsv1alpha1.SchemeGroupVersion.Group, Kind: "PodGroup"},
 		schedulerpluginsv1alpha1.SchemeGroupVersion.Version); err == nil {
-		// inject watching for job related scheduler-plugins PodGroup
+		// inject watching for cluster related scheduler-plugins PodGroup
 		if err = c.Watch(source.Kind(mgr.GetCache(), &schedulerpluginsv1alpha1.PodGroup{}), eventHandler, genericPredicates); err != nil {
 			return err
 		}
@@ -361,7 +361,7 @@ func (r *KubeClusterReconciler) GetAPIGroupVersion() schema.GroupVersion {
 	return v1alpha1.GroupVersion
 }
 
-// GetPodsForCluster returns the set of pods that this job should manage.
+// GetPodsForCluster returns the set of pods that this cluster should manage.
 // It also reconciles ControllerRef by adopting/orphaning.
 // Note that the returned Pods are pointers into the cache.
 func (r *KubeClusterReconciler) GetPodsForCluster(kcluster *v1alpha1.KubeCluster) ([]*corev1.Pod, error) {
@@ -414,11 +414,11 @@ func (r *KubeClusterReconciler) DeleteCluster(metaObject metav1.Object) error {
 	}
 	if err := r.Delete(context.Background(), kubecluster); err != nil {
 		r.recorder.Eventf(kubecluster, corev1.EventTypeWarning, control.FailedDeletePodReason, "Error deleting: %v", err)
-		logrus.Error(err, "failed to delete job", "namespace", kubecluster.Namespace, "name", kubecluster.Name)
+		logrus.Error(err, "failed to delete cluster", "namespace", kubecluster.Namespace, "name", kubecluster.Name)
 		return err
 	}
-	r.recorder.Eventf(kubecluster, corev1.EventTypeNormal, control.SuccessfulDeletePodReason, "Deleted job: %v", kubecluster.Name)
-	logrus.Info("job deleted", "namespace", kubecluster.Namespace, "name", kubecluster.Name)
+	r.recorder.Eventf(kubecluster, corev1.EventTypeNormal, control.SuccessfulDeletePodReason, "Deleted cluster: %v", kubecluster.Name)
+	logrus.Info("cluster deleted", "namespace", kubecluster.Namespace, "name", kubecluster.Name)
 	commonmetrics.DeletedclustersCounterInc(kubecluster.Namespace, kubecluster.Spec.ClusterType)
 	return nil
 }

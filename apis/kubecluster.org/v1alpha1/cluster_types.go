@@ -58,7 +58,7 @@ type ClusterSpec struct {
 	MainContainer string `json:"mainContainer,omitempty"`
 
 	// `RunPolicy` encapsulates various runtime policies of the distributed training
-	// job, for example how to clean up resources and how long the job can stay
+	// cluster, for example how to clean up resources and how long the cluster can stay
 	// active.
 	RunPolicy RunPolicy `json:"runPolicy,omitempty"`
 }
@@ -82,7 +82,7 @@ type ClusterStatus struct {
 	// It is represented in RFC3339 form and is in UTC.
 	LastReconcileTime *metav1.Time `json:"lastReconcileTime,omitempty"`
 
-	// Represents time when the job was completed. It is not guaranteed to
+	// Represents time when the cluster was completed. It is not guaranteed to
 	// be set in happens-before order across separate operations.
 	// It is represented in RFC3339 form and is in UTC.
 	CompletionTime *metav1.Time `json:"completionTime,omitempty"`

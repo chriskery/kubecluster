@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License
 
-package ctrlutil
+package util
 
 import (
 	"fmt"
 	kubeclusterorgv1alpha1 "github.com/chriskery/kubecluster/apis/kubecluster.org/v1alpha1"
-	common2 "github.com/chriskery/kubecluster/pkg/common"
+	"github.com/chriskery/kubecluster/pkg/common"
 	"github.com/chriskery/kubecluster/pkg/controller/cluster_schema"
 	"github.com/chriskery/kubecluster/pkg/controller/ctrlcommon"
 	"github.com/chriskery/kubecluster/pkg/controller/expectation"
@@ -29,7 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 
-// SatisfiedExpectations returns true if the required adds/dels for the given mxjob have been observed.
+// SatisfiedExpectations returns true if the required adds/dels for the given mxcluster have been observed.
 // Add/del counts are established by the controller at sync time, and updated as controllees are observed by the controller
 // manager.
 func SatisfiedExpectations(exp expectation.ControllerExpectationsInterface,
@@ -57,7 +57,7 @@ func SatisfiedExpectations(exp expectation.ControllerExpectationsInterface,
 }
 
 // OnDependentCreateFunc modify expectations when dependent (pod/service) creation observed.
-func OnDependentCreateFunc(schemaReconcilers map[cluster_schema.ClusterSchema]common2.ClusterSchemaReconciler) func(event.CreateEvent) bool {
+func OnDependentCreateFunc(schemaReconcilers map[cluster_schema.ClusterSchema]common.ClusterSchemaReconciler) func(event.CreateEvent) bool {
 	return func(e event.CreateEvent) bool {
 		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
 		if len(clusterType) == 0 {
@@ -67,7 +67,12 @@ func OnDependentCreateFunc(schemaReconcilers map[cluster_schema.ClusterSchema]co
 		if !ok {
 			return false
 		}
+		return onDependentCreateFunc(exp)(e)
+	}
+}
 
+func onDependentCreateFunc(exp expectation.ControllerExpectationsInterface) func(event.CreateEvent) bool {
+	return func(e event.CreateEvent) bool {
 		rtype := e.Object.GetLabels()[kubeclusterorgv1alpha1.ReplicaTypeLabel]
 		if len(rtype) == 0 {
 			return false
@@ -122,7 +127,7 @@ func OnDependentUpdateFunc(cc *ctrlcommon.ClusterController) func(updateEvent ev
 
 		if controllerRefChanged && oldControllerRef != nil {
 			// The ControllerRef was changed. Sync the old controller, if any.
-			if job := resolveControllerRef(cc, oldObj.GetNamespace(), oldControllerRef); job != nil {
+			if cluster := resolveControllerRef(cc, oldObj.GetNamespace(), oldControllerRef); cluster != nil {
 				logger.Infof("pod/service controller ref updated: %v, %v", newObj, oldObj)
 				return true
 			}
@@ -130,8 +135,8 @@ func OnDependentUpdateFunc(cc *ctrlcommon.ClusterController) func(updateEvent ev
 
 		// If it has a controller ref, that's all that matters.
 		if newControllerRef != nil {
-			job := resolveControllerRef(cc, newObj.GetNamespace(), newControllerRef)
-			if job == nil {
+			cluster := resolveControllerRef(cc, newObj.GetNamespace(), newControllerRef)
+			if cluster == nil {
 				return false
 			}
 			logger.Debugf("pod/service has a controller ref: %v, %v", newObj, oldObj)
@@ -141,8 +146,8 @@ func OnDependentUpdateFunc(cc *ctrlcommon.ClusterController) func(updateEvent ev
 	}
 }
 
-// resolveControllerRef returns the job referenced by a ControllerRef,
-// or nil if the ControllerRef could not be resolved to a matching job
+// resolveControllerRef returns the cluster referenced by a ControllerRef,
+// or nil if the ControllerRef could not be resolved to a matching cluster
 // of the correct Kind.
 func resolveControllerRef(cc *ctrlcommon.ClusterController, namespace string, controllerRef *metav1.OwnerReference) metav1.Object {
 	// We can't look up by UID, so look up by Name and then verify UID.
@@ -162,18 +167,8 @@ func resolveControllerRef(cc *ctrlcommon.ClusterController, namespace string, co
 	return cluster
 }
 
-// OnDependentDeleteFunc modify expectations when dependent (pod/service) deletion observed.
-func OnDependentDeleteFunc(schemaReconcilers map[cluster_schema.ClusterSchema]common2.ClusterSchemaReconciler) func(event.DeleteEvent) bool {
+func onDependentDeleteFunc(exp expectation.ControllerExpectationsInterface) func(event.DeleteEvent) bool {
 	return func(e event.DeleteEvent) bool {
-		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
-		if len(clusterType) == 0 {
-			return false
-		}
-		exp, ok := schemaReconcilers[cluster_schema.ClusterSchema(clusterType)]
-		if !ok {
-			return false
-		}
-
 		rtype := e.Object.GetLabels()[kubeclusterorgv1alpha1.ReplicaTypeLabel]
 		if len(rtype) == 0 {
 			return false
@@ -196,5 +191,21 @@ func OnDependentDeleteFunc(schemaReconcilers map[cluster_schema.ClusterSchema]co
 		}
 
 		return true
+	}
+}
+
+// OnDependentDeleteFunc modify expectations when dependent (pod/service) deletion observed.
+func OnDependentDeleteFunc(schemaReconcilers map[cluster_schema.ClusterSchema]common.ClusterSchemaReconciler) func(event.DeleteEvent) bool {
+	return func(e event.DeleteEvent) bool {
+		clusterType := e.Object.GetLabels()[kubeclusterorgv1alpha1.ClusterTypeLabel]
+		if len(clusterType) == 0 {
+			return false
+		}
+		exp, ok := schemaReconcilers[cluster_schema.ClusterSchema(clusterType)]
+		if !ok {
+			return false
+		}
+
+		return onDependentDeleteFunc(exp)(e)
 	}
 }
