@@ -8226,6 +8226,12 @@ spec:
                       handle this. Suspending a KubeCluster will reset the StartTime
                       field of the KubeCluster. \n Defaults to false."
                     type: boolean
+                  ttlSecondsAfterFinished:
+                    description: TTLSecondsAfterFinished is the TTL to clean up clusters.
+                      It may take extra ReconcilePeriod seconds for the cleanup, since
+                      reconcile gets called periodically. Default to infinite.
+                    format: int32
+                    type: integer
                 type: object
             required:
             - clusterReplicaSpec
