@@ -160,6 +160,12 @@ type RunPolicy struct {
 	// Default to None.
 	CleanKubeNodePolicy *CleanKubeNodePolicy `json:"CleanKubeNodePolicy,omitempty"`
 
+	// TTLSecondsAfterFinished is the TTL to clean up clusters.
+	// It may take extra ReconcilePeriod seconds for the cleanup, since
+	// reconcile gets called periodically.
+	// Default to infinite.
+	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
+
 	// Specifies the duration in seconds relative to the startTime that the KubeCluster may be active
 	// before the system tries to terminate it; value must be positive integer.
 	// +optional

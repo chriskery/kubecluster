@@ -93,9 +93,9 @@ type ClusterStatus struct {
 // +resource:path=kubeclusters
 //+kubebuilder:resource:scope=Namespaced,path=kubeclusters,shortName={"kc","kcluster"}
 //+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
 //+kubebuilder:printcolumn:JSONPath=`.metadata.creationTimestamp`,name="Age",type=date
 //+kubebuilder:printcolumn:JSONPath=`.status.conditions[-1:].type`,name="State",type=string
+//+kubebuilder:subresource:status
 
 // KubeCluster is the Schema for the clusters API
 type KubeCluster struct {

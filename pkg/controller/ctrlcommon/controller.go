@@ -25,8 +25,8 @@ import (
 	"github.com/chriskery/kubecluster/pkg/controller/expectation"
 	"github.com/chriskery/kubecluster/pkg/core"
 	"github.com/chriskery/kubecluster/pkg/util"
+	"github.com/chriskery/kubecluster/pkg/util/clusterutil"
 	"github.com/chriskery/kubecluster/pkg/util/k8sutil"
-	"github.com/chriskery/kubecluster/pkg/util/misc"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	log "github.com/sirupsen/logrus"
@@ -46,6 +46,7 @@ import (
 	schedulerpluginsv1alpha1 "sigs.k8s.io/scheduler-plugins/apis/scheduling/v1alpha1"
 	"strings"
 	"sync"
+	"time"
 	volcanov1beta1 "volcano.sh/apis/pkg/apis/scheduling/v1beta1"
 	volcanoclient "volcano.sh/apis/pkg/client/clientset/versioned"
 )
@@ -251,7 +252,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 	clusterName := metaObject.GetName()
 	clusterKind := cc.Controller.GetAPIGroupVersionKind().Kind
 	oldStatus := kcluster.Status.DeepCopy()
-	if misc.IsClusterSuspended(runPolicy) {
+	if clusterutil.IsClusterSuspended(runPolicy) {
 		if err = cc.CleanUpResources(runPolicy, runtimeObject, metaObject, kcluster.Status, pods); err != nil {
 			return err
 		}
@@ -329,7 +330,7 @@ func (cc *ClusterController) ReconcileKubeCluster(kcluster *v1alpha1.KubeCluster
 			return err
 		}
 
-		if err = cc.CleanupCluster(runtimeObject); err != nil {
+		if err = cc.CleanupCluster(runPolicy, runtimeObject, kcluster.Status); err != nil {
 			return err
 		}
 
@@ -531,20 +532,47 @@ func (cc *ClusterController) CleanUpResources(
 			cc.Recorder.Eventf(runtimeObject, corev1.EventTypeNormal, "SuccessfulDeletePodGroup", "Deleted PodGroup: %v", metaObject.GetName())
 		}
 	}
-	if err := cc.CleanupCluster(runtimeObject); err != nil {
+
+	if err := cc.CleanupCluster(runPolicy, runtimeObject, clusterStatus); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (cc *ClusterController) CleanupCluster(runtimeObject runtime.Object) error {
-	metaObject, _ := runtimeObject.(metav1.Object)
-	err := cc.Controller.DeleteCluster(metaObject)
-	if err != nil {
-		log.Errorf("FailedDeleteKubeCluster: %s", err)
-		cc.Recorder.Eventf(runtimeObject, corev1.EventTypeWarning, "FailedDeleteKubeCluster", err.Error())
-		return err
+func (cc *ClusterController) CleanupCluster(runPolicy *v1alpha1.RunPolicy, runtimeObject runtime.Object, clusterStatus v1alpha1.ClusterStatus) error {
+	currentTime := time.Now()
+	ttl := runPolicy.TTLSecondsAfterFinished
+	if ttl == nil {
+		return nil
 	}
+	duration := time.Second * time.Duration(*ttl)
+	if clusterStatus.CompletionTime == nil {
+		return fmt.Errorf("job completion time is nil, cannot cleanup")
+	}
+
+	finishTime := clusterStatus.CompletionTime
+	expireTime := finishTime.Add(duration)
+	metaObject, _ := runtimeObject.(metav1.Object)
+	if currentTime.After(expireTime) {
+		err := cc.Controller.DeleteCluster(metaObject)
+		if err != nil {
+			log.Errorf("FailedDeleteKubeCluster: %s", err)
+			cc.Recorder.Eventf(runtimeObject, corev1.EventTypeWarning, "FailedDeleteKubeCluster", err.Error())
+			return err
+		}
+	} else {
+		if finishTime.After(currentTime) {
+			util.LoggerForCluster(metaObject).Warnf("Found Job finished in the future. This is likely due to time skew in the cluster. Job cleanup will be deferred.")
+		}
+		remaining := expireTime.Sub(currentTime)
+		key, err := KeyFunc(runtimeObject)
+		if err != nil {
+			util.LoggerForCluster(metaObject).Warnf("Couldn't get key for cluster object: %v", err)
+			return err
+		}
+		cc.WorkQueue.AddAfter(key, remaining)
+	}
+
 	return nil
 }
 

@@ -36,7 +36,7 @@ spec:
       template:
         spec:
           containers:
-            - name: ubuntu
+            - name: kubenode
 #              image: registry.cn-hangzhou.aliyuncs.com/eflops/slurm-dev:sysbench
               image: registry.cn-hangzhou.aliyuncs.com/eflops/slurm-dev:sysbench
               resources:

@@ -260,7 +260,7 @@ func (r *KubeClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 	schemaReconciler.Default(kcluster)
 
 	if err = r.ReconcileKubeCluster(kcluster, schemaReconciler); err != nil {
-		logrus.Warnf("Reconcile Kube CLuster error %v", err)
+		logrus.Warnf("Reconcile Kube Cluster error %v", err)
 		return ctrl.Result{}, err
 	}
 
@@ -414,7 +414,7 @@ func (r *KubeClusterReconciler) DeleteCluster(metaObject metav1.Object) error {
 	}
 	if err := r.Delete(context.Background(), kubecluster); err != nil {
 		r.recorder.Eventf(kubecluster, corev1.EventTypeWarning, control.FailedDeletePodReason, "Error deleting: %v", err)
-		logrus.Error(err, "failed to delete cluster", "namespace", kubecluster.Namespace, "name", kubecluster.Name)
+		logrus.Error(err, " failed to delete cluster ", " namespace ", kubecluster.Namespace, " name ", kubecluster.Name)
 		return err
 	}
 	r.recorder.Eventf(kubecluster, corev1.EventTypeNormal, control.SuccessfulDeletePodReason, "Deleted cluster: %v", kubecluster.Name)
